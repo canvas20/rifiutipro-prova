@@ -1,0 +1,29 @@
+RifiutiPro - app di prova (Fase 2 · V.5) - versione web per GitHub Pages
+=======================================================================
+
+COSA C'E' IN QUESTA CARTELLA
+- index.html ............ l'app completa (non modificare)
+- config.js ............. qui va incollata la configurazione Firebase (archivio dati condiviso)
+- seed.json ............. aziende e utenti di prova (si caricano dal pulsante "Carica i dati di prova")
+- manifest.webmanifest, sw.js, icon-192.png, icon-512.png ... servono per installarla sul telefono
+
+PUBBLICARE SU GITHUB PAGES (gratis)
+1. Su github.com apra il repository "rifiutipro-prova".
+2. "Add file" > "Upload files": trascini TUTTI i file di questa cartella (non la cartella) > "Commit changes".
+3. "Settings" > "Pages" > Source: "Deploy from a branch" > Branch: "main", cartella "/ (root)" > "Save".
+4. Dopo 1-2 minuti l'app e' su: https://NOMEUTENTE.github.io/rifiutipro-prova/
+
+DATI CONDIVISI (Firebase)
+- config.js e' gia' compilato con il progetto Firebase "rifiutipro-prova": lei e Alessio vedete gli stessi dati.
+- Primo avvio: nella schermata iniziale tocchi "Carica i dati di prova" (una sola volta).
+
+INSTALLARE SUL TELEFONO
+- iPhone (Safari): apra l'indirizzo > Condividi > "Aggiungi alla schermata Home".
+- Android (Chrome): menu > "Installa app" o "Aggiungi a schermata Home".
+
+ATTENZIONE
+- Versione di prova: solo dati fittizi. In "modalita' di prova" Firestore e' aperto a chi conosce
+  l'indirizzo: niente dati veri finche' non si impostano le regole di accesso e l'autenticazione.
+- Le password non vengono salvate; le email non partono; i pagamenti sono simulati.
+- Firestore si chiude da solo dopo 30 giorni in modalita' di prova: si riapre da
+  Firestore > Regole (basta aggiornare la data).
