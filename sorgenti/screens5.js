@@ -9,9 +9,9 @@ function memberKinds(m) {
   return base.filter(k => N[k] !== false);
 }
 /* invio: chiede al «postino» (Cloudflare Worker) di avvisare i dispositivi di un'azienda o di una persona */
-function pushNotify(co, kind, title, body, url, mid) {
+function pushNotify(co, kind, title, body, url, mid, self) {
   if (MODE !== 'firebase' || !window.NOTIFY_URL || !co) return;
-  try { fetch(window.NOTIFY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ co, mid: mid || '', kind, title: String(title).slice(0, 80), body: String(body || '').slice(0, 180), url: url || '#/notif', except: meId() || '' }), keepalive: true }).catch(() => { }); } catch (e) { }
+  try { fetch(window.NOTIFY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ co, mid: mid || '', kind, title: String(title).slice(0, 80), body: String(body || '').slice(0, 180), url: url || '#/notif', except: self ? '' : (meId() || '') }), keepalive: true }).catch(() => { }); } catch (e) { }
 }
 /* chi avvisare, in base a cosa è cambiato nei dati */
 function afterWrite(c, id, b, a) {
@@ -76,7 +76,7 @@ ACT.pushOn = async () => {
   } catch (e) { console.error(e); toast('Attivazione non riuscita: ' + (e && (e.code || e.message) || 'errore')); }
 };
 ACT.pushOff = async () => { const P = pushLocal(); if (P) { try { await FS.collection('push').doc(P.id).delete(); } catch (e) { } try { await firebase.messaging().deleteToken(); } catch (e) { } } lsSet('rp_push', null); toast('Notifiche disattivate su questo dispositivo'); render(); };
-ACT.pushTest = () => { const m = me(); pushNotify(m.co, 'chat', 'Prova di notifica', 'Se leggi questo messaggio, le notifiche funzionano.', '#/privacy', m.id); toast('Inviata: chiudi l\'app e attendi qualche secondo'); };
+ACT.pushTest = () => { const m = me(); pushNotify(m.co, 'chat', 'Prova di notifica', 'Se leggi questo messaggio, le notifiche funzionano.', '#/privacy', m.id, true); toast('Inviata: chiudi l\'app e attendi qualche secondo'); };
 /* aggiorna i tipi di avviso quando cambiano le preferenze o l'utente */
 function pushRefresh() { const P = pushLocal(); const m = me(); if (!P || !m || MODE !== 'firebase' || !FS) return; if (P.mid !== m.id) { savePushDoc(P.token).catch(() => { }); return; } FS.collection('push').doc(P.id).set({ kinds: memberKinds(m), co: m.co, mid: m.id }, { merge: true }).catch(() => { }); }
 const _ntf = ACT.ntf; ACT.ntf = el => { _ntf(el); setTimeout(pushRefresh, 300); };
