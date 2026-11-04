@@ -24,7 +24,9 @@ function render() {
   const sy = window.scrollY;
   let v;
   try { v = view(); } catch (e) { console.error(e); v = { h: header('t', 'Errore', { back: '#/home' }), b: `<div class="err">Qualcosa non ha funzionato: ${esc(e.message)}</div>` }; }
-  app.innerHTML = (v.h || '') + `<main class="ct ${v.t ? '' : 'nt'}">${v.b}</main>` + (v.t ? tabs(v.t) : '');
+  const W = typeof isWide === 'function' && isWide() && READY && me() && me().status === 'active' && me().emailOk !== false;
+  if (W) { app.className = 'desk'; app.innerHTML = sidebar() + `<div class="wmain">${v.h || ''}<main class="ct nt ${v.wide ? 'full' : ''}">${v.b}</main></div>`; }
+  else { app.className = ''; app.innerHTML = (v.h || '') + `<main class="ct ${v.t ? '' : 'nt'}">${v.b}</main>` + (v.t ? tabs(v.t) : ''); }
   try { if (typeof updateBadge === 'function') updateBadge(); } catch (e) { }
   if (af) { const el = app.querySelector(`[data-f="${af}"]`); if (el) { el.focus({ preventScroll: true }); try { if (ss != null) el.setSelectionRange(ss, se); } catch (e) { } } }
   if (!v.top) window.scrollTo(0, sy);

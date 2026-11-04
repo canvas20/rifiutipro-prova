@@ -57,7 +57,7 @@ const IC = {
 };
 
 /* ---------- archivio dati (db condiviso dell'artefatto, oppure locale) ---------- */
-const COLS = ['companies', 'members', 'links', 'reqs', 'quotes', 'chats', 'logs', 'ads', 'files', 'events', 'docs', 'firs', 'lists', 'favs', 'eerx', 'tickets', 'settings', 'promo'];
+const COLS = ['companies', 'members', 'links', 'reqs', 'quotes', 'chats', 'logs', 'ads', 'files', 'events', 'docs', 'firs', 'lists', 'favs', 'eerx', 'tickets', 'settings', 'promo', 'crm_notes', 'crm_tasks', 'crm_stage'];
 const D = {}; COLS.forEach(c => D[c] = {});
 let DB = null, MODE = 'loading', FS = null;
 const LKEY = 'rp_local_v1';
