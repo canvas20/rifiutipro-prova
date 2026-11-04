@@ -65,7 +65,7 @@ function vHome() {
   const logs = ((D.logs[co.id] && D.logs[co.id].items) || []).slice(0, 4);
   return {
     h: header('home'), t: 'home', b: `${banner()}${pushInvite()}${coCard}${giftInvite()}${tiles}${foto}${vetr}${zoneLine()}${adBig()}${expiringBox()}
-  ${canWrite(m) ? `<div class="two"><button class="bt g" data-act="newReq">Richiedi quotazione</button><button class="bt" data-go="#/quotes/req">Invia quotazione${open.length ? ' · ' + open.length + ' in attesa' : ''}</button></div>` : '<div class="info">Il tuo ruolo è «Solo visualizzazione»: vedi tutto ma non invii richieste o quotazioni.</div>'}
+  ${canWrite(m) ? '' : '<div class="info">Il tuo ruolo è «Solo visualizzazione»: vedi tutto ma non invii richieste o quotazioni.</div>'}
   ${!planOn(co) ? `<div class="warn">Ricevere è gratis. Per <b>inviare</b> quotazioni attiva il piano (${eur(PRICE.m)}/mese o ${eur(PRICE.y)}/anno) oppure usa un codice regalo. <a href="#/plan"><b>Il tuo piano</b></a></div>` : ''}
   ${kpi}
   <div class="card"><div class="row"><h3 class="sp">Richieste da gestire</h3><a href="#/quotes/req">Vedi tutte</a></div>${open.length ? `<div class="list">${open.slice(0, 3).map(reqRow).join('')}</div>` : '<span class="mut sm">Nessuna richiesta in attesa.</span>'}</div>
@@ -106,7 +106,7 @@ function vQuotes(tab) {
   tab = tab || (g ? 'rx' : 'rx');
   const flt = fv('qf', 'f', 'all');
   let body = '';
-  const segs = g ? [['rx', 'Ricevute'], ['tx', 'Inviate'], ['req', 'Richieste']] : [['rx', 'Ricevute'], ['req', 'Le mie richieste']];
+  const segs = g ? [['rx', 'Ricevute'], ['tx', 'Inviate']] : [['rx', 'Ricevute']];
   if (tab === 'rx' || tab === 'tx') {
     let L = all('quotes').filter(q => tab === 'rx' ? q.to === co.id : q.from === co.id).sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
     const F = { all: () => true, new: q => qStatus(q, tab === 'rx')[1] === (tab === 'rx' ? 'Nuova' : 'Inviata'), seen: q => qStatus(q, 1)[1] === 'Vista', conf: q => qStatus(q, 1)[1] === 'Confermata', old: q => ['Scaduta', 'Ritirata'].includes(qStatus(q, 1)[1]) };
@@ -120,7 +120,7 @@ function vQuotes(tab) {
     const L = all('reqs').filter(r => sub === 'in' ? (r.to || []).includes(co.id) : r.from === co.id).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
     body = (g ? `<div class="chips">${chip(sub === 'in', 'qr', 'Ricevute', 'data-k="in"')}${chip(sub === 'out', 'qr', 'Inviate', 'data-k="out"')}</div>` : '') + (L.length ? `<div class="list">${L.map(reqRow).join('')}</div>` : `<div class="empty">${sub === 'in' ? 'Nessuna richiesta ricevuta.' : 'Nessuna richiesta inviata.'}</div>`) + (canWrite(m) ? '<button class="bt g" data-act="newReq">Nuova richiesta di quotazione</button>' : '') + '<p class="hint">Stati: In attesa (da gestire), Quotata (hai risposto), Non interessato, Annullata (ritirata dal richiedente).</p>';
   }
-  return { h: header('home'), t: 'quotes', b: `<h2 class="ttl">Quotazioni</h2><p class="sub">Le offerte scambiate con le aziende collegate</p><div class="seg">${segs.map(([k, l]) => `<a href="#/quotes/${k}" class="${tab === k ? 'on' : ''}">${l}</a>`).join('')}</div>${body}${adSmall()}` };
+  return { h: header('home'), t: 'quotes', b: `<h2 class="ttl">Quotazioni</h2><p class="sub">Le offerte scambiate con le aziende collegate</p><div class="seg">${segs.map(([k, l]) => `<a href="#/quotes/${k}" class="${tab === k ? 'on' : ''}">${l}</a>`).join('')}${canWrite(m) ? `<a href="#" data-act="newReq" style="background:linear-gradient(180deg,#078A50,#056F47);color:#fff">+ Richiedi quotazione</a>` : ''}</div>${tab === 'req' ? '<h3 style="margin:4px 0 -4px">Richieste di quotazione</h3>' : `<a href="#/quotes/req" class="row sm" style="font-weight:700">📥 Richieste ricevute e inviate${g && reqsOpenToMe().length ? ' · <span class="st w">' + reqsOpenToMe().length + ' da gestire</span>' : ''}<span class="sp"></span>›</a>`}${body}${adSmall()}` };
 }
 ACT.qf = el => { setF('qf', 'f', el.dataset.k); render(); };
 ACT.qr = el => { setF('qf', 'r', el.dataset.k); render(); };
@@ -172,6 +172,9 @@ ACT.reqDecline = el => { const r = get('reqs', el.dataset.id); const co = myCo()
 ACT.reqCancel = el => { const r = get('reqs', el.dataset.id); confirmBox('Annullare la richiesta?', 'Le aziende destinatarie la vedranno come «Annullata».', 'Annulla richiesta', () => { patch('reqs', r.id, { status: 'cancelled' }); log('Annullata la richiesta ' + r.num); }, 1); };
 
 /* nuova richiesta di quotazione */
+function macroList() { const co = myCo(); const L = MACRO.map(x => x[0]); ((co && co.macrosExtra) || []).concat(((co && co.waste) || []).map(w => w.m)).forEach(m => { if (m && !L.includes(m)) L.push(m); }); return L; }
+function subsFor(macro) { const base = (MACRO.find(x => x[0] === macro) || [, , , []])[3].slice(); const co = myCo(); ((co && co.waste) || []).filter(w => w.m === macro).forEach(w => { if (!base.includes(w.s)) base.push(w.s); }); return base; }
+ACT.nrSubList = () => { setF('nr', 'sub', ''); setF('nr', 'subx', ''); render(); };
 ACT.newReq = () => { U.nr = { macro: 'Metalli', sub: '', unit: 'kg', to: {} }; go('#/newreq'); };
 function vNewReq(preTo) {
   const co = myCo(); const m = me();
@@ -186,9 +189,8 @@ function vNewReq(preTo) {
     h: header('t', 'Richiedi quotazione', { back: '#/home' }), b: `
   ${N.err ? `<div class="err">${esc(N.err)}</div>` : ''}
   <div class="sec">Rifiuto (una richiesta = un solo rifiuto)</div>
-  ${fld('Macroarea', sel('nr', 'macro', MACRO.map(x => x[0]), 'data-rr'), 1)}
-  ${fld('Sottocategoria', sel('nr', 'sub', [['', 'Scegli…']].concat(subs).concat([['__altro', 'Altro (scrivi tu)']])), 1)}
-  ${fv('nr', 'sub') === '__altro' ? fld('Quale rifiuto?', inp('nr', 'subx', 'Es. Rame in treccia')) : ''}
+  ${fld('Macroarea', sel('nr', 'macro', macroList().concat([['__nuova', '+ Aggiungi nuova macroarea…']]), 'data-rr'), 1)}
+  ${fld('Sottocategoria', fv('nr', 'sub') === '__altro' ? `<div class="row" style="gap:6px">${inp('nr', 'subx', 'Scrivi qui il rifiuto, es. Rame in treccia', 'text', 'autofocus')}<button class="bt gh s" data-act="nrSubList" title="Torna all'elenco" style="flex:none">Elenco</button></div>` : sel('nr', 'sub', [['', 'Scegli…']].concat(subsFor(N.macro)).concat([['__altro', 'Altro (scrivi tu)']]), 'data-rr'), 1)}
   ${fld('Descrizione (facoltativa)', inp('nr', 'descr', 'Es. cavi elettrici già separati'))}
   ${fld('Codice EER (facoltativo)', inp('nr', 'eer', 'Es. 17 04 01 oppure «rame»', 'text', 'data-live'), 0, sugg.length ? sugg.map(c => `<a href="#" data-act="nrEer" data-c="${c[0]}" class="tag">${eerNorm(c[0])}${c[1] ? '*' : ''} ${esc(c[3].slice(0, 40))}</a>`).join(' ') : 'Scrivi il codice o una parola per cercarlo. Non è obbligatorio.')}
   <div class="two">${fld('Quantità stimata', inp('nr', 'qty', 'Es. 350', 'text', 'inputmode="decimal"'))}${fld('Unità', sel('nr', 'unit', ['kg', 't', 'pezzi', 'm³', 'litri']))}</div>
@@ -203,7 +205,9 @@ function vNewReq(preTo) {
 }
 ACT.nrTo = el => { U.nr.to[el.dataset.id] = !U.nr.to[el.dataset.id]; };
 ACT.nrEer = el => { setF('nr', 'eer', eerNorm(el.dataset.c)); render(); };
-document.addEventListener('change', e => { if (e.target.getAttribute && e.target.getAttribute('data-f') === 'nr.macro') { setF('nr', 'sub', ''); render(); } });
+document.addEventListener('change', e => { if (!(e.target.getAttribute && e.target.getAttribute('data-f') === 'nr.macro')) return; setF('nr', 'sub', ''); setF('nr', 'subx', '');
+  if (e.target.value === '__nuova') { setF('nr', 'macro', U.nr._prevMacro || 'Metalli'); render(); askText('Nuova macroarea', 'Es. Tessili, Pneumatici, Fanghi', n => { n = n.trim().slice(0, 40); if (!n) return; const co = myCo(); if (!macroList().includes(n)) patch('companies', co.id, { macrosExtra: ((co.macrosExtra) || []).concat([n]) }); log('Aggiunta la macroarea «' + n + '»'); setF('nr', 'macro', n); setF('nr', 'sub', '__altro'); render(); setTimeout(() => { const i = document.querySelector('[data-f="nr.subx"]'); if (i) i.focus(); }, 30); }); return; }
+  U.nr._prevMacro = e.target.value; render(); });
 ACT.nrSend = () => {
   const N = U.nr; const co = myCo(); const m = me();
   const sub = N.sub === '__altro' ? String(N.subx || '').trim() : N.sub;
@@ -270,3 +274,4 @@ ACT.mqSend = () => {
   log('Inviata la quotazione ' + q.num + ' a ' + coName(to) + ' (' + q.sub + ', ' + money(price) + ' ' + q.unit + ')');
   U.mq = null; toast('Quotazione inviata'); go('#/quote/' + qid);
 };
+document.addEventListener('change', e => { if (e.target.getAttribute && e.target.getAttribute('data-f') === 'nr.sub' && e.target.value === '__altro') setTimeout(() => { const i = document.querySelector('[data-f="nr.subx"]'); if (i) i.focus(); }, 30); });
