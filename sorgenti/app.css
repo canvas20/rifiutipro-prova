@@ -164,4 +164,7 @@ textarea.in{min-height:80px;resize:vertical}
 .kcard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:3px;cursor:grab;font-size:14px}.kcard.drag{opacity:.5}
 .ksel{font-size:12px;border:1px solid var(--line);border-radius:8px;padding:2px 4px;background:#fff}
 .av.xs{width:24px;height:24px;border-radius:7px;font-size:10px}
-.tile.t-t b{font-size:17.5px;font-weight:900;line-height:1.12}
+.tile.t-t{align-items:center;justify-content:center;text-align:center;gap:6px;padding:12px 10px}
+.tile.t-t svg{position:static;width:38px;height:38px;flex:none}
+.tile.t-t b{font-size:15.5px;font-weight:900;line-height:1.15;letter-spacing:.2px}
+.tile.t-t span{font-size:12.5px}

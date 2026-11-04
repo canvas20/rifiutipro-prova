@@ -49,7 +49,7 @@ function vHome() {
   const tiles = `<div class="tiles">
    <a class="tile t-g" href="#/quotes">${IC.tag}${g ? (nq ? `<em>${nq} nuove</em>` : '') : (nq ? `<em>${nq} non viste</em>` : '')}<b>Quotazioni</b><span>${g ? 'Inviate e ricevute' : 'Ricevute dai collegati'}</span></a>
    <a class="tile t-b" href="#/companies">${IC.people}${lr ? `<em>${lr} richiest${lr > 1 ? 'e' : 'a'}</em>` : `<em>${np} collegat${np === 1 ? 'a' : 'e'}</em>`}<b>Aziende collegate</b><span>${g ? 'La tua rete commerciale' : 'Impianti e trasportatori'}</span></a>
-   <a class="tile t-t" href="#/fotoeer">${IC.cam}<b>Fotografa e ottieni codice EER</b><span>Scatta o carica foto</span></a>
+   <a class="tile t-t" href="#/fotoeer">${IC.cam}<b>Fotografa<br>e ottieni<br>codice EER</b><span>Scatta o carica foto</span></a>
    <a class="tile t-o" href="#/companies/search">${IC.search}<b>Cerca aziende</b><span>Trova nuovi operatori</span></a></div>`;
   const foto = '';
   const vetr = `<a class="wide w-navy" href="#/vetrina"><span class="vi">${IC.shop}</span><span><b>VETRINA</b><small>Consulenti, avvocati, noleggi e attrezzature nella tua zona</small></span><span class="ar">›</span></a>`;
