@@ -2,6 +2,7 @@
   // Postino delle notifiche di RifiutiPro (Cloudflare Worker). Il sito resta su GitHub Pages.
   "name": "solitary-moon-3203",
   "main": "notifiche/worker.js",
+  "account_id": "aa7ed9030bbb0734eea98f9247635a0b",
   "compatibility_date": "2026-11-01",
   "workers_dev": true,
   "observability": { "enabled": true }
