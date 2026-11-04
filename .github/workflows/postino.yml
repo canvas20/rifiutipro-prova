@@ -22,3 +22,13 @@ jobs:
         run: |
           sleep 5
           curl -s "https://solitary-moon-3203.carrubba-gi.workers.dev/?verifica=1&dispositivi=1"; echo
+      - name: Prova del riconoscimento foto
+        run: |
+          U=https://solitary-moon-3203.carrubba-gi.workers.dev/eer-foto
+          for f in notifiche/prova/*.jpg; do
+            echo "== $f"
+            printf '{"img":"data:image/jpeg;base64,%s"}' "$(base64 -w0 "$f")" > /tmp/req.json
+            curl -s -X POST "$U" -H 'Origin: https://canvas20.github.io' -H 'Content-Type: application/json' --data @/tmp/req.json; echo
+          done
+          echo "== proposta"
+          curl -s -X POST "$U" -H 'Origin: https://canvas20.github.io' -H 'Content-Type: application/json' --data '{"mode":"proponi","oggetto":"pneumatici usati","materiale":"altro","attivita":"Officina, autoriparazione","processo":"Pezzo smontato in manutenzione o riparazione"}'; echo

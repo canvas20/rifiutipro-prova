@@ -1,4 +1,4 @@
-/* v6 
+/* v7 
  * RifiutiPro · «postino» delle notifiche (Cloudflare Worker, piano gratuito)
  *
  * L'app chiede: «avvisa l'azienda X (o la persona Y) che è arrivata una quotazione».
@@ -22,6 +22,12 @@ export default {
       return new Response('RifiutiPro: postino delle notifiche attivo · ' + stato, { headers: Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, cors) });
     }
     if (req.method !== 'POST') return new Response('Metodo non ammesso', { status: 405, headers: cors });
+    if (new URL(req.url).pathname === '/eer-foto') {
+      const ro = req.headers.get('Origin') || '';
+      if (ro && ro !== origin && !ro.startsWith('http://localhost')) return new Response('Origine non ammessa', { status: 403, headers: cors });
+      try { return json(await eerFoto(await req.json(), env), 200, cors); }
+      catch (e) { return json({ error: String(e && e.message || e).slice(0, 300) }, 500, cors); }
+    }
     const reqOrigin = req.headers.get('Origin') || '';
     if (reqOrigin && reqOrigin !== origin && !reqOrigin.startsWith('http://localhost')) return new Response('Origine non ammessa', { status: 403, headers: cors });
     let msg;
@@ -79,3 +85,40 @@ async function findDevices(pid, token, co) {
   }).filter(d => d.token);
 }
 async function deleteDoc(pid, token, name) { await fetch(`https://firestore.googleapis.com/v1/${name}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }); }
+
+/* ===== Codice EER da foto: riconoscimento con Workers AI (piano gratuito) ===== */
+const MODELS = ['@cf/meta/llama-4-scout-17b-16e-instruct', '@cf/mistralai/mistral-small-3.1-24b-instruct'];
+const MATERIALI = { ferro: 'metallo ferroso (ferro, acciaio)', nonfer: 'alluminio o altri metalli non ferrosi', rame: 'rame, ottone o cavi elettrici', veicolo: 'componente di veicolo (alternatore, motorino, centralina, catalizzatore…)', plastica: 'plastica', carta: 'carta o cartone', legno: 'legno', vetro: 'vetro', lampade: 'lampade o tubi luminosi', raee: 'apparecchio elettrico o elettronico', alimenti: 'alimenti', inerti: 'macerie o inerti edili', oli: 'oli o liquidi', altro: 'altro' };
+async function aiRun(env, messages, max_tokens) {
+  if (!env.AI) throw new Error('Intelligenza artificiale non collegata al postino');
+  let last;
+  for (const m of MODELS) {
+    try { const r = await env.AI.run(m, { messages, max_tokens, temperature: 0.1 }); const t = typeof r.response === 'string' ? r.response : JSON.stringify(r.response || r); return { text: t, model: m }; }
+    catch (e) { last = e; }
+  }
+  throw last || new Error('Modello non disponibile');
+}
+function parseJson(t) { const m = String(t).match(/\{[\s\S]*\}/); if (!m) throw new Error('Risposta non leggibile'); return JSON.parse(m[0]); }
+async function eerFoto(b, env) {
+  if (b.mode === 'proponi') return proponi(b, env);
+  const img = String(b.img || '');
+  if (!/^data:image\/(jpeg|png|webp);base64,/.test(img) || img.length > 1400000) throw new Error('Foto mancante o troppo grande');
+  const istr = `Sei un tecnico esperto di rifiuti. Guarda la foto e identifica il rifiuto (oggetto e materiale prevalente). ${b.note ? 'Indicazione dell\'utente: "' + String(b.note).slice(0, 200) + '". ' : ''}
+Rispondi SOLO con un oggetto JSON valido, in italiano, con queste chiavi:
+{"oggetto": "nome breve dell'oggetto", "materiale": una di queste chiavi ${JSON.stringify(Object.keys(MATERIALI))} (significati: ${Object.entries(MATERIALI).map(([k, v]) => k + '=' + v).join('; ')}), "descrizione": "una frase su cosa si vede e in che stato è", "pericolo": true se si vedono possibili sostanze pericolose (oli, liquidi, batterie, amianto, mercurio, residui chimici) altrimenti false, "nota_pericolo": "breve, o stringa vuota", "piu_rifiuti": true se nella foto ci sono più tipi di rifiuto diversi, "affidabilita": "alta" o "media" o "bassa"}.
+Non indicare codici EER: la provenienza del rifiuto la chiederà l'app.`;
+  const r = await aiRun(env, [{ role: 'user', content: [{ type: 'text', text: istr }, { type: 'image_url', image_url: { url: img } }] }], 350);
+  const o = parseJson(r.text);
+  if (!MATERIALI[o.materiale]) o.materiale = 'altro';
+  return { ok: true, oggetto: String(o.oggetto || '').slice(0, 80), materiale: o.materiale, descrizione: String(o.descrizione || '').slice(0, 300), pericolo: !!o.pericolo, nota_pericolo: String(o.nota_pericolo || '').slice(0, 200), piu_rifiuti: !!o.piu_rifiuti, affidabilita: ['alta', 'media', 'bassa'].includes(o.affidabilita) ? o.affidabilita : 'media', modello: r.model };
+}
+async function proponi(b, env) {
+  const c = k => String(b[k] || '').slice(0, 300);
+  const istr = `Sei un consulente ambientale italiano. Proponi il codice EER (Decisione 2000/532/CE come modificata dalla 2014/955/UE) per questo rifiuto, seguendo le Linee guida SNPA sulla classificazione:
+1) individua prima la fonte che genera il rifiuto nei capitoli 01-12 e 17-20; 2) se non c'è, cerca nei capitoli 13, 14, 15; 3) poi nel capitolo 16; 4) solo alla fine un codice 99. Per i codici a specchio segnala la verifica di pericolosità. Per il capitolo 20 verifica che sia rifiuto urbano (art. 183, c. 1, lett. b-ter, d.lgs. 152/2006, allegati L-quater e L-quinquies). Non assecondare l'utente se i dati portano altrove. Se i dati non bastano, rispondi "non determinabile".
+Dati: oggetto: ${c('oggetto')}; materiale: ${c('materiale')}; attività che ha prodotto il rifiuto: ${c('attivita')}; processo o motivo dello scarto: ${c('processo')}; altre informazioni: ${c('dettaglio')}.
+Rispondi SOLO con JSON: {"codice": "6 cifre con spazi, es. 16 01 18 (asterisco se pericoloso) oppure non determinabile", "descrizione": "descrizione ufficiale della voce", "motivazione": "2-3 frasi", "alternative": [{"codice": "...", "motivo": "perché scartato"}], "verifiche": ["..."]}`;
+  const r = await aiRun(env, [{ role: 'user', content: istr }], 600);
+  const o = parseJson(r.text);
+  return { ok: true, codice: String(o.codice || '').slice(0, 30), descrizione: String(o.descrizione || '').slice(0, 200), motivazione: String(o.motivazione || '').slice(0, 800), alternative: (Array.isArray(o.alternative) ? o.alternative : []).slice(0, 5).map(a => ({ c: String(a.codice || '').slice(0, 20), d: String(a.motivo || '').slice(0, 200) })), verifiche: (Array.isArray(o.verifiche) ? o.verifiche : []).slice(0, 5).map(v => String(v).slice(0, 200)), modello: r.model };
+}
