@@ -15,7 +15,11 @@ export default {
     const origin = env.ALLOWED_ORIGIN || 'https://canvas20.github.io';
     const cors = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '86400' };
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (req.method === 'GET') return new Response('RifiutiPro: postino delle notifiche attivo' + (env.SERVICE_ACCOUNT ? '' : ' (manca il segreto SERVICE_ACCOUNT)'), { headers: Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, cors) });
+    if (req.method === 'GET') {
+      let stato = 'manca il segreto SERVICE_ACCOUNT';
+      if (env.SERVICE_ACCOUNT) { try { const sa = JSON.parse(env.SERVICE_ACCOUNT); stato = sa.client_email && sa.private_key ? 'chiave Firebase valida (progetto ' + sa.project_id + ')' : 'il segreto SERVICE_ACCOUNT non è la chiave Firebase giusta'; if (new URL(req.url).searchParams.get('verifica') === '1' && sa.private_key) { await accessToken(sa); stato += ', accesso a Google riuscito'; } } catch (e) { stato = 'problema con SERVICE_ACCOUNT: ' + (e.message || e); } }
+      return new Response('RifiutiPro: postino delle notifiche attivo · ' + stato, { headers: Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, cors) });
+    }
     if (req.method !== 'POST') return new Response('Metodo non ammesso', { status: 405, headers: cors });
     const reqOrigin = req.headers.get('Origin') || '';
     if (reqOrigin && reqOrigin !== origin && !reqOrigin.startsWith('http://localhost')) return new Response('Origine non ammessa', { status: 403, headers: cors });

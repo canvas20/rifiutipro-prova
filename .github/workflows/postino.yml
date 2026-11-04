@@ -18,3 +18,7 @@ jobs:
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "Manca il segreto CLOUDFLARE_API_TOKEN"; exit 1; fi
           npx --yes wrangler@4 deploy --keep-vars
+      - name: Controlla il postino
+        run: |
+          sleep 5
+          curl -s "https://solitary-moon-3203.carrubba-gi.workers.dev/?verifica=1"; echo
