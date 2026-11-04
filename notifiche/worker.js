@@ -1,4 +1,4 @@
-/* v5 
+/* v6 
  * RifiutiPro · «postino» delle notifiche (Cloudflare Worker, piano gratuito)
  *
  * L'app chiede: «avvisa l'azienda X (o la persona Y) che è arrivata una quotazione».
