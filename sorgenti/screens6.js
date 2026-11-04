@@ -1,5 +1,5 @@
 /* ================= PREZZI, CODICI REGALO E INVITI ================= */
-const PRICE = { m: 9.99, y: 99.99 };                       // annuale: proposta (2 mesi gratis), da confermare
+const PRICE = { m: 9.99, y: 99.99 };                       // annuale: 2 mesi gratis (confermato)
 const APP_URL = 'https://canvas20.github.io/rifiutipro-prova/';
 const eur = v => money(v) + ' €';
 function promoCfg() { const g = D.settings.promo || {}; return { perCo: g.perCo != null ? +g.perCo : 5, chain: !!g.chain, days: g.days != null ? +g.days : 365 }; }
@@ -47,7 +47,7 @@ function vPlan() {
     h: header('t', 'Il tuo piano', { back: '#/profile' }), t: 'profile', b: `<h2 class="ttl">Ricevere è gratis, inviare costa poco</h2>
   <div class="card"><div class="row"><b class="sp">Ricevi quotazioni</b>${stx('n', 'Attivo')}</div><span class="sm mut">Gratis, sempre. Ricevi le richieste e le quotazioni dei tuoi collegamenti.</span></div>
   ${isG(co) ? `<div class="card"><div class="row"><b class="sp">Invia quotazioni</b>${on ? stx('n', 'Attivo fino al ' + fDate(co.plan.until)) : stx('x', 'Non attivo')}</div>
-   <div class="two"><button class="opt ${k === 'm' ? 'on' : ''}" data-act="plK" data-k="m" style="flex-direction:column;align-items:flex-start"><b>Mensile</b><span class="price">${eur(PRICE.m)}</span><span class="d">al mese</span></button><button class="opt ${k === 'y' ? 'on' : ''}" data-act="plK" data-k="y" style="flex-direction:column;align-items:flex-start"><b>Annuale</b><span class="price">${eur(PRICE.y)}</span><span class="d">all'anno · 2 mesi gratis <span class="ph">[da confermare]</span></span></button></div>
+   <div class="two"><button class="opt ${k === 'm' ? 'on' : ''}" data-act="plK" data-k="m" style="flex-direction:column;align-items:flex-start"><b>Mensile</b><span class="price">${eur(PRICE.m)}</span><span class="d">al mese</span></button><button class="opt ${k === 'y' ? 'on' : ''}" data-act="plK" data-k="y" style="flex-direction:column;align-items:flex-start"><b>Annuale</b><span class="price">${eur(PRICE.y)}</span><span class="d">all'anno · 2 mesi gratis</span></button></div>
    <span class="sm">✓ Quotazioni illimitate · ✓ Rispondi alle richieste · ✓ Report ed esportazioni</span>
    <button class="bt g" data-act="plBuy">Attiva il ${k === 'm' ? 'mensile' : 'annuale'} (simulazione)</button>
    <div class="demo">In prova non c'è nessun pagamento: il piano si attiva subito. Nella versione definitiva passa dall'App Store (Apple).</div></div>` : ''}
