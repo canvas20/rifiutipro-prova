@@ -10,4 +10,4 @@ self.FIREBASE_CONFIG = {
 };
 // Notifiche ad app chiusa: chiave pubblica «Web Push» di Firebase e indirizzo del «postino» (Cloudflare Worker).
 self.FCM_VAPID_KEY = "BIr7VH83EEWLbLCZO0xsa3-0xmfoJZMY0Z8TFLpKSYWtz4f0p_Qp7teCmO4JwCZiYm3_a_i8IWt5nbUdpuh3TAU";
-self.NOTIFY_URL = "";
+self.NOTIFY_URL = "https://solitary-moon-3203.carrubba-gi.workers.dev/";
