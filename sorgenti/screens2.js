@@ -90,10 +90,10 @@ function qStatus(q, forMe) {
   if (q.seenAt) return ['v', 'Vista'];
   return forMe ? ['n', 'Nuova'] : ['w', 'Inviata'];
 }
-function priceTxt(q) { return `${money(q.price)} ${esc(q.unit)} ${q.vat === 'esente' ? 'esente IVA' : '+ IVA'}`; }
+function priceTxt(q) { return q.dir === 'gratuito' ? 'Gratuito · nessun compenso' : `${money(q.price)} ${esc(q.unit)} ${q.vat === 'esente' ? 'esente IVA' : '+ IVA'}`; }
 function quoteRow(q) {
   const co = myCo(); const forMe = q.to === co.id; const other = get('companies', forMe ? q.from : q.to); const [c, t] = qStatus(q, forMe);
-  return `<a class="li" data-go="#/quote/${q.id}">${avatar(other, 1)}<span class="sp"><b>${esc(other ? other.name : '')}</b><span class="s">${esc(q.sub || q.macro)}${q.eer ? ' · ' + esc(q.eer) : ''} · ${q.dir === 'offro' ? 'Offro' : 'Richiedo'}</span><span class="s" style="color:var(--navy);font-weight:700">${priceTxt(q)}</span><span class="s">${fDT(q.updatedAt || q.createdAt)} · ${esc(q.num)} · V${q.ver || 1}</span></span>${stx(c, t)}</a>`;
+  return `<a class="li" data-go="#/quote/${q.id}">${avatar(other, 1)}<span class="sp"><b>${esc(other ? other.name : '')}</b><span class="s">${esc(q.sub || q.macro)}${q.eer ? ' · ' + esc(q.eer) : ''} · ${(DIRL[q.dir] || 'Offro')}</span><span class="s" style="color:var(--navy);font-weight:700">${priceTxt(q)}</span><span class="s">${fDT(q.updatedAt || q.createdAt)} · ${esc(q.num)} · V${q.ver || 1}</span></span>${stx(c, t)}</a>`;
 }
 function reqState(r, coId) { const s = r.resp && r.resp[coId]; return s === 'quoted' ? ['v', 'Quotata'] : s === 'declined' ? ['x', 'Non interessato'] : ['w', 'In attesa']; }
 function reqRow(r) {
@@ -114,7 +114,7 @@ function vQuotes(tab) {
     body = `<div class="chips">${[['all', 'Tutte'], ['new', tab === 'rx' ? 'Nuove' : 'Inviate'], ['seen', 'Viste'], ['conf', 'Confermate'], ['old', 'Scadute/ritirate']].map(([k, l]) => chip(flt === k, 'qf', `${l} (${cnt(k)})`, `data-k="${k}"`)).join('')}</div>`;
     L = L.filter(F[flt] || F.all);
     body += L.length ? `<div class="list">${L.map(quoteRow).join('')}</div>` : `<div class="empty">${tab === 'rx' ? 'Nessuna quotazione ricevuta.' : 'Nessuna quotazione inviata. Rispondi a una richiesta dalla scheda «Richieste».'}</div>`;
-    body += '<p class="hint">Offro: chi quota paga il materiale. Richiedo: chi quota chiede un compenso per ritiro o trattamento.</p>';
+    body += '<p class="hint">Offro: chi quota paga il materiale. Richiedo: chi quota chiede un compenso per ritiro o trattamento. Gratuito: nessun compenso da nessuna delle due parti.</p>';
   } else {
     const sub = fv('qf', 'r', g ? 'in' : 'out');
     const L = all('reqs').filter(r => sub === 'in' ? (r.to || []).includes(co.id) : r.from === co.id).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
@@ -135,8 +135,8 @@ function vQuote(id) {
   return {
     h: header('t', 'Quotazione', { back: '#/quotes/' + (forMe ? 'rx' : 'tx') }), t: 'quotes', b: `
   <div class="row"><span class="mono sm mut sp">${esc(q.num)} · V${q.ver || 1}</span>${stx(c, t)}</div>
-  <div class="card"><div class="row">${avatar(other)}<span class="sp"><b>${esc(q.sub || q.macro)}</b><div class="mut sm">${q.dir === 'offro' ? 'Offro · chi quota paga il materiale' : 'Richiedo · chi quota chiede un compenso'}</div></span></div>
-   <div class="price">${money(q.price)} <span style="font-size:16px">${esc(q.unit)}</span></div><div class="mut sm">${q.vat === 'esente' ? 'Esente IVA' : '+ IVA'} · Trasporto ${esc(q.transport)}${q.transport === 'separato' && q.tcost ? ' (' + money(q.tcost) + ' €)' : ''} · ${q.validUntil ? 'Valida fino al ' + fDate(q.validUntil) : 'Fino a variazione'}</div></div>
+  <div class="card"><div class="row">${avatar(other)}<span class="sp"><b>${esc(q.sub || q.macro)}</b><div class="mut sm">${q.dir === 'gratuito' ? 'Gratuito · nessun compenso' : q.dir === 'offro' ? 'Offro · chi quota paga il materiale' : 'Richiedo · chi quota chiede un compenso'}</div></span></div>
+   <div class="price">${q.dir === 'gratuito' ? 'Gratuito' : money(q.price) + ' <span style="font-size:16px">' + esc(q.unit) + '</span>'}</div><div class="mut sm">${q.dir === 'gratuito' ? 'Nessun compenso' : (q.vat === 'esente' ? 'Esente IVA' : '+ IVA')} · Trasporto ${esc(q.transport)}${q.transport === 'separato' && q.tcost ? ' (' + money(q.tcost) + ' €)' : ''} · ${q.validUntil ? 'Valida fino al ' + fDate(q.validUntil) : 'Fino a variazione'}</div></div>
   <div class="card"><dl class="dl"><dt>Da</dt><dd>${esc(coName(q.from))}</dd><dt>A</dt><dd>${forMe ? 'Te' : esc(coName(q.to))}</dd><dt>Macroarea</dt><dd>${esc(q.macro)}</dd><dt>Codice EER</dt><dd>${q.eer ? esc(q.eer) + ' <span class="mut sm">' + esc(eerLabel(q.eer)) + '</span>' : '—'}</dd>${q.descr ? `<dt>Descrizione</dt><dd>${esc(q.descr)}</dd>` : ''}<dt>Aggiornata</dt><dd>${fDT(q.updatedAt || q.createdAt)}</dd>${req ? `<dt>Richiesta</dt><dd><a href="#/req/${req.id}">${esc(req.num)}</a></dd>` : ''}<dt>Note</dt><dd>${esc(q.note || '—')}</dd></dl></div>
   ${forMe ? (q.status === 'sent' ? (q.confirmedAt ? `<div class="ok">Ricezione confermata il ${fDT(q.confirmedAt)} da ${esc(memName(q.confirmedBy))}.</div>` : (canWrite(m) ? `<button class="bt g" data-act="qConfirm" data-id="${q.id}">HO RICEVUTO E VISUALIZZATO</button><span class="hint">Conferma solo la ricezione: non è un'accettazione della quotazione.</span>` : '')) : '')
       : `<div class="info">${q.seenAt ? 'Visualizzata il ' + fDT(q.seenAt) : 'Non ancora visualizzata'}${q.confirmedAt ? ' · ricezione confermata il ' + fDT(q.confirmedAt) : ''}</div>${q.status === 'sent' && canWrite(m) ? `<div class="two"><button class="bt ln" data-go="#/makequote/edit/${q.id}">MODIFICA (crea V${(q.ver || 1) + 1})</button><button class="bt rd" data-act="qWithdraw" data-id="${q.id}">Ritira</button></div>` : ''}`}
@@ -238,9 +238,9 @@ function vMakeQuote(mode, id) {
   ${Q.err ? `<div class="err">${esc(Q.err)}</div>` : ''}
   ${r ? `<div class="card"><dl class="dl"><dt>Rifiuto</dt><dd>${esc(r.sub)} · ${esc(r.macro)}${r.eer ? ' · ' + esc(r.eer) : ''}</dd><dt>Quantità</dt><dd>${r.qty ? esc(r.qty) + ' ' + esc(r.unit) : '—'}</dd><dt>Richiesta</dt><dd>${esc(r.num)}</dd></dl></div>`
       : `${fld('Macroarea', sel('mq', 'macro', MACRO.map(x => x[0])), 1)}${fld('Rifiuto', inp('mq', 'sub', 'Es. Rame'), 1)}${fld('Codice EER (facoltativo)', inp('mq', 'eer', 'Es. 17 04 01'))}`}
-  <div class="lb">Direzione economica</div><div class="seg"><button class="${Q.dir === 'offro' ? 'on' : ''}" data-act="mqSet" data-k="dir" data-v="offro">Offro · pago io</button><button class="${Q.dir === 'richiedo' ? 'on' : ''}" data-act="mqSet" data-k="dir" data-v="richiedo">Richiedo · chiedo compenso</button></div>
-  <div class="two">${fld('Prezzo', inp('mq', 'price', 'Es. 4,60', 'text', 'inputmode="decimal"'), 1)}${fld('Unità', sel('mq', 'unit', ['€/kg', '€/t', '€/pezzo', '€ a corpo']))}</div>
-  <div class="lb">Regime IVA</div><div class="seg"><button class="${Q.vat !== 'esente' ? 'on' : ''}" data-act="mqSet" data-k="vat" data-v="iva">+ IVA</button><button class="${Q.vat === 'esente' ? 'on' : ''}" data-act="mqSet" data-k="vat" data-v="esente">Esente IVA</button></div>
+  <div class="lb">Direzione economica</div><div class="seg"><button class="${Q.dir === 'offro' ? 'on' : ''}" data-act="mqSet" data-k="dir" data-v="offro">Offro · pago io</button><button class="${Q.dir === 'richiedo' ? 'on' : ''}" data-act="mqSet" data-k="dir" data-v="richiedo">Richiedo · chiedo compenso</button><button class="${Q.dir === 'gratuito' ? 'on' : ''}" data-act="mqSet" data-k="dir" data-v="gratuito">Gratuito · nessun compenso</button></div>
+  ${Q.dir === 'gratuito' ? '<div class="info sm">Nessun prezzo: il ritiro o il conferimento avviene senza compenso per nessuna delle due parti. Eventuali costi di trasporto si indicano qui sotto.</div>' : `<div class="two">${fld('Prezzo', inp('mq', 'price', 'Es. 4,60', 'text', 'inputmode="decimal"'), 1)}${fld('Unità', sel('mq', 'unit', ['€/kg', '€/t', '€/pezzo', '€ a corpo']))}</div>
+  <div class="lb">Regime IVA</div><div class="seg"><button class="${Q.vat !== 'esente' ? 'on' : ''}" data-act="mqSet" data-k="vat" data-v="iva">+ IVA</button><button class="${Q.vat === 'esente' ? 'on' : ''}" data-act="mqSet" data-k="vat" data-v="esente">Esente IVA</button></div>`}
   ${fld('Trasporto', sel('mq', 'transport', [['incluso', 'Incluso'], ['escluso', 'Escluso'], ['separato', 'Costo separato']], 'data-rr'))}
   ${Q.transport === 'separato' ? fld('Costo trasporto (€)', inp('mq', 'tcost', 'Es. 120', 'text', 'inputmode="decimal"')) : ''}
   <div class="lb">Validità</div><div class="seg"><button class="${Q.vmode !== 'date' ? 'on' : ''}" data-act="mqSet" data-k="vmode" data-v="mod">Fino a modifica</button><button class="${Q.vmode === 'date' ? 'on' : ''}" data-act="mqSet" data-k="vmode" data-v="date">Con scadenza</button></div>
@@ -253,7 +253,7 @@ ACT.mqSet = el => { U.mq[el.dataset.k] = el.dataset.v; render(); };
 ACT.mqSend = () => {
   const { r: rt, a: mode, b: id } = route(); const Q = U.mq; const co = myCo(); const m = me();
   const err = t => { Q.err = t; render(); window.scrollTo(0, 0); };
-  const price = String(Q.price).replace(',', '.').trim(); if (!price || !isFinite(Number(price)) || Number(price) < 0) return err('Inserisci un prezzo valido.');
+  const price = Q.dir === 'gratuito' ? '0' : String(Q.price).replace(',', '.').trim(); if (Q.dir !== 'gratuito' && (!price || !isFinite(Number(price)) || Number(price) < 0)) return err('Inserisci un prezzo valido.');
   if (Q.vmode === 'date' && !Q.validUntil) return err('Indica la data di scadenza.');
   let eer = ''; if (String(Q.eer || '').trim()) { eer = eerNorm(Q.eer); if (!eer) return err('Codice EER non valido.'); }
   const base = { dir: Q.dir, price, unit: Q.unit, vat: Q.vat === 'esente' ? 'esente' : 'iva', transport: Q.transport, tcost: Q.transport === 'separato' ? String(Q.tcost).replace(',', '.') : '', validUntil: Q.vmode === 'date' ? Q.validUntil : '', note: String(Q.note || '').trim(), updatedAt: nowISO() };

@@ -22,7 +22,7 @@ function afterWrite(c, id, b, a) {
     else if (a.status === 'cancelled' && b.status !== 'cancelled') (a.to || []).forEach(t => pushNotify(t, 'reqs', 'Richiesta annullata', `${a.sub || a.macro} · ${nm(a.from)}`, '#/req/' + id));
   }
   if (c === 'quotes') {
-    const txt = `${a.sub || a.macro}: ${money(a.price)} ${a.unit} da ${nm(a.from)}`;
+    const txt = `${a.sub || a.macro}: ${a.dir === 'gratuito' ? 'gratuito' : money(a.price) + ' ' + a.unit} da ${nm(a.from)}`;
     if (!b && a.status === 'sent') pushNotify(a.to, 'quotes', 'Nuova quotazione', txt, '#/quote/' + id);
     else if (b && (a.ver || 1) > (b.ver || 1)) pushNotify(a.to, 'quotes', `Quotazione aggiornata (V${a.ver})`, txt, '#/quote/' + id);
     else if (b && a.confirmedAt && !b.confirmedAt) pushNotify(a.from, 'quotes', 'Ricezione confermata', `${nm(a.to)} ha visualizzato la quotazione ${a.num}`, '#/quote/' + id);

@@ -18,6 +18,7 @@ function eerFind(code) { const dg = String(code || '').replace(/\D/g, ''); retur
 function eerLabel(code) { const c = eerFind(code); return c ? c[3] : ''; }
 function initials(n) { const p = String(n || '?').replace(/\b(srl|s\.r\.l\.|spa|snc|sas|s\.p\.a\.)\b/ig, '').trim().split(/\s+/); return ((p[0] || '?')[0] + ((p[1] || '')[0] || '')).toUpperCase(); }
 function avc(id) { const k = ['', 'b', 'o', 'p', 't']; let h = 0; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return k[h % k.length]; }
+const DIRL = { offro: 'Offro', richiedo: 'Richiedo', gratuito: 'Gratuito' };
 function money(v) { const n = Number(String(v).replace(',', '.')); if (!isFinite(n)) return esc(v); return n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function num9() { return String(Math.floor(Math.random() * 1e9)).padStart(9, '0'); }
 function newPin() { return String(Math.floor(100000 + Math.random() * 900000)); }
