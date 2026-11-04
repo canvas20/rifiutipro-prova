@@ -240,8 +240,8 @@ function deepMerge(a, b) { for (const k in b) { const v = b[k]; if (v && typeof 
 function ref(c, id) { return MODE === 'firebase' ? FS.collection(c).doc(id) : DB.collection(c).doc(id); }
 function modeTxt() { return MODE === 'firebase' ? 'Dati condivisi (archivio Firebase)' : MODE === 'db' ? 'Dati condivisi su claude.ai' : 'Dati salvati solo su questo dispositivo'; }
 const SHARED = () => MODE === 'db' || MODE === 'firebase';
-async function put(c, id, obj) { D[c] = Object.assign({}, D[c], { [id]: obj }); sched(); if (SHARED()) { try { await ref(c, id).set(clone(obj)); } catch (e) { failW(e); } } else saveLocal(); }
-async function patch(c, id, p) { const cur = clone(D[c][id] || {}); D[c] = Object.assign({}, D[c], { [id]: deepMerge(cur, clone(p)) }); sched(); if (SHARED()) { try { if (MODE === 'firebase') await ref(c, id).set(clone(p), { merge: true }); else await ref(c, id).update(clone(p)); } catch (e) { failW(e); } } else saveLocal(); }
+async function put(c, id, obj) { const _b = D[c] && D[c][id] ? clone(D[c][id]) : null; D[c] = Object.assign({}, D[c], { [id]: obj }); sched(); try { if (typeof afterWrite === 'function') afterWrite(c, id, _b, D[c][id]); } catch (e) { console.error(e); } if (SHARED()) { try { await ref(c, id).set(clone(obj)); } catch (e) { failW(e); } } else saveLocal(); }
+async function patch(c, id, p) { const _b = D[c] && D[c][id] ? clone(D[c][id]) : null; const cur = clone(D[c][id] || {}); D[c] = Object.assign({}, D[c], { [id]: deepMerge(cur, clone(p)) }); sched(); try { if (typeof afterWrite === 'function') afterWrite(c, id, _b, D[c][id]); } catch (e) { console.error(e); } if (SHARED()) { try { if (MODE === 'firebase') await ref(c, id).set(clone(p), { merge: true }); else await ref(c, id).update(clone(p)); } catch (e) { failW(e); } } else saveLocal(); }
 async function del(c, id) { const o = Object.assign({}, D[c]); delete o[id]; D[c] = o; sched(); if (SHARED()) { try { await ref(c, id).delete(); } catch (e) { failW(e); } } else saveLocal(); }
 /* immagini: ridotte e compresse (max ~180 KB) e salvate come documento a sé */
 function compressImage(file, maxSide = 1100) {
@@ -368,6 +368,7 @@ function render() {
   let v;
   try { v = view(); } catch (e) { console.error(e); v = { h: header('t', 'Errore', { back: '#/home' }), b: `<div class="err">Qualcosa non ha funzionato: ${esc(e.message)}</div>` }; }
   app.innerHTML = (v.h || '') + `<main class="ct ${v.t ? '' : 'nt'}">${v.b}</main>` + (v.t ? tabs(v.t) : '');
+  try { if (typeof updateBadge === 'function') updateBadge(); } catch (e) { }
   if (af) { const el = app.querySelector(`[data-f="${af}"]`); if (el) { el.focus({ preventScroll: true }); try { if (ss != null) el.setSelectionRange(ss, se); } catch (e) { } } }
   if (!v.top) window.scrollTo(0, sy);
   if (v.after) v.after();
@@ -677,7 +678,7 @@ function vHome() {
   const vetr = `<a class="wide w-navy" href="#/vetrina"><span class="vi">${IC.shop}</span><span><b>VETRINA</b><small>Consulenti, avvocati, noleggi e attrezzature nella tua zona</small></span><span class="ar">›</span></a>`;
   if (!g) {
     const recent = quotesToMe().sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt))).slice(0, 3);
-    return { h: header('home'), t: 'home', b: `${banner()}${coCard}${tiles}${foto}${vetr}${zoneLine()}${adBig()}
+    return { h: header('home'), t: 'home', b: `${banner()}${pushInvite()}${coCard}${tiles}${foto}${vetr}${zoneLine()}${adBig()}
     <div class="card"><div class="row"><h3 class="sp">Quotazioni ricevute recenti</h3><a href="#/quotes">Vedi tutte</a></div>${recent.length ? `<div class="list">${recent.map(quoteRow).join('')}</div>` : '<span class="mut sm">Ancora nessuna quotazione. Collegati a un impianto e chiedi una quotazione.</span>'}<span class="hint">Le quotazioni sono private: le vedi solo tu e l'azienda che te le ha inviate.</span></div>
     ${canWrite(m) ? '<button class="bt" data-act="newReq">Richiedi quotazione ai tuoi collegamenti</button>' : ''}${ftr()}` };
   }
@@ -686,7 +687,7 @@ function vHome() {
   const kpi = `<div class="card"><div class="row"><h3 class="sp">Panoramica</h3><span class="mut sm">ultimi 30 giorni</span></div><div class="kp"><div><span>Quotazioni inviate</span><b>${qs.filter(q => q.from === co.id).length}</b></div><div><span>Quotazioni ricevute</span><b>${qs.filter(q => q.to === co.id).length}</b></div><div><span>Aziende collegate</span><b>${np}</b></div><div><span>Richieste ricevute</span><b>${reqsToMe().filter(inR).length}</b></div></div></div>`;
   const logs = ((D.logs[co.id] && D.logs[co.id].items) || []).slice(0, 4);
   return {
-    h: header('home'), t: 'home', b: `${banner()}${coCard}${tiles}${foto}${vetr}${zoneLine()}${adBig()}${expiringBox()}
+    h: header('home'), t: 'home', b: `${banner()}${pushInvite()}${coCard}${tiles}${foto}${vetr}${zoneLine()}${adBig()}${expiringBox()}
   ${canWrite(m) ? `<div class="two"><button class="bt g" data-act="newReq">Richiedi quotazione</button><button class="bt" data-go="#/quotes/req">Invia quotazione${open.length ? ' · ' + open.length + ' in attesa' : ''}</button></div>` : '<div class="info">Il tuo ruolo è «Solo visualizzazione»: vedi tutto ma non invii richieste o quotazioni.</div>'}
   ${!planOn(co) ? `<div class="warn">Ricevere è gratis. Per <b>inviare</b> quotazioni attiva il piano (5,00 €/mese o 50,00 €/anno). <a href="#/plan"><b>Il tuo piano</b></a></div>` : ''}
   ${kpi}
@@ -1655,7 +1656,7 @@ XR.privacy = () => {
   <div class="card"><h3>Password</h3><span class="sm mut">In prova le password non vengono salvate. Nella versione definitiva: cambio password con conferma via email.</span></div>
   <div class="card"><h3>I tuoi dati</h3><button class="bt gh" data-act="expData">Esporta i dati della mia azienda (JSON)</button><button class="bt rd" data-act="askDel">Chiedi la cancellazione dell'account</button><span class="hint">La richiesta arriva all'assistenza di Soluzione Rifiuti.</span></div>` };
 };
-ACT.ntf = el => { const m = me(); const N = Object.assign({ quotes: true, reqs: true, chat: true, email: true, promo: !!m.mkt }, m.notif || {}); N[el.dataset.k] = !N[el.dataset.k]; patch('members', m.id, { notif: N }); };
+ACT.ntf = el => { const m = me(); const N = Object.assign({ quotes: true, reqs: true, chat: true, links: true, team: true, agenda: true, ads: true, help: true, email: true, promo: !!m.mkt }, m.notif || {}); N[el.dataset.k] = !N[el.dataset.k]; patch('members', m.id, { notif: N }); };
 ACT.expData = () => { const co = myCo(); const pick = (c, f) => all(c).filter(f); const out = { azienda: co, membri: pick('members', x => x.co === co.id), quotazioni: pick('quotes', q => q.from === co.id || q.to === co.id), richieste: pick('reqs', r => r.from === co.id || (r.to || []).includes(co.id)), agenda: pick('events', e => e.co === co.id), documenti: pick('docs', d => d.co === co.id).map(d => Object.assign({}, d, { file: d.file ? '(file)' : '' })), formulari: pick('firs', f => f.co === co.id).map(f => Object.assign({}, f, { photo: f.photo ? '(foto)' : '' })), registro: (D.logs[co.id] || {}).items || [] }; download('RifiutiPro_dati_' + co.name.replace(/\W+/g, '_') + '.json', JSON.stringify(out, null, 1), 'application/json'); log('Esportati i dati dell\'azienda'); };
 ACT.askDel = () => confirmBox('Chiedere la cancellazione?', 'Soluzione Rifiuti riceverà la richiesta e ti risponderà in assistenza.', 'Invia richiesta', () => { const m = me(); put('tickets', uid('tk_'), { co: m.co, by: m.id, subject: 'Richiesta di cancellazione account', text: 'Chiedo la cancellazione del mio account (' + m.email + ').', status: 'open', replies: [], createdAt: nowISO() }); log('Chiesta la cancellazione dell\'account'); toast('Richiesta inviata'); });
 const FAQ = [['Come mi collego a un\'azienda?', 'Aziende › Cerca, apri il profilo e tocca «Invia richiesta di collegamento». Quando l\'altra azienda accetta vedete i contatti reciproci.'], ['Chi vede le mie quotazioni?', 'Solo l\'azienda a cui le invii. Non esistono quotazioni o listini pubblici.'], ['Cosa vuol dire «Ho ricevuto e visualizzato»?', 'Conferma solo la ricezione. RifiutiPro non conclude contratti: nessuna accettazione o aggiudicazione nell\'app.'], ['Dove trovo il PIN aziendale?', 'Profilo › Team e accessi. Lo vedono amministratore e uffici.'], ['Il codice EER proposto è sicuro?', 'È una proposta motivata: la classificazione resta responsabilità del produttore del rifiuto.'], ['RifiutiPro sostituisce FIR o RENTRI?', 'No: è uno strumento commerciale e organizzativo, non sostituisce FIR, RENTRI, MUD o altri obblighi di legge.']];
@@ -1698,8 +1699,113 @@ const _vCompany = vCompany;
 vCompany = function (id) { const v = _vCompany(id); const c = get('companies', id); if (c && c.verified && v.b) v.b = v.b.replace('<span class="tag">Dati autorizzativi dichiarati</span>', '<span class="tag g">✓ Verificata da Soluzione Rifiuti</span>'); return v; };
 
 /* dati di prova per la versione web (archivio vuoto) */
-ACT.loadDemo = async () => { try { const r = await fetch('seed.json', { cache: 'no-store' }); const S = await r.json(); toast('Carico i dati di prova…'); for (const c in S) for (const id in S[c]) { if (!D[c] || !D[c][id]) await put(c, id, S[c][id]); } toast('Dati di prova caricati'); go('#/login'); } catch (e) { toast('Dati di prova non disponibili qui.'); } };
+ACT.loadDemo = async () => { window.__SEEDING = true; try { const r = await fetch('seed.json', { cache: 'no-store' }); const S = await r.json(); toast('Carico i dati di prova…'); for (const c in S) for (const id in S[c]) { if (!D[c] || !D[c][id]) await put(c, id, S[c][id]); } toast('Dati di prova caricati'); go('#/login'); } catch (e) { toast('Dati di prova non disponibili qui.'); } window.__SEEDING = false; };
 function demoLoader() { return MODE !== 'db' && !all('members').length ? `<div class="card"><b>Archivio vuoto</b><span class="sm mut">Carica le aziende di prova (Recuperi Demo, Ecologia Demo, Officina Demo…) per provare subito l'app.</span><button class="bt g s" data-act="loadDemo">Carica i dati di prova</button></div>` : ''; }
+
+/* ================= NOTIFICHE PUSH (anche ad app chiusa) e BADGE ================= */
+const PUSH_KINDS = { reqs: 'Nuove richieste di quotazione', quotes: 'Quotazioni (nuove, aggiornate, confermate)', chat: 'Messaggi in chat', links: 'Richieste di collegamento', team: 'Richieste di accesso del personale', agenda: 'Eventi assegnati in agenda', ads: 'Annunci (approvazione)', help: 'Assistenza' };
+function pushReady() { return MODE === 'firebase' && !!window.NOTIFY_URL && !!window.FCM_VAPID_KEY && 'serviceWorker' in navigator && 'Notification' in window; }
+function isIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+function isStandalone() { return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true; }
+function memberKinds(m) {
+  const N = Object.assign({ quotes: true, reqs: true, chat: true, links: true, team: true, agenda: true, ads: true, help: true }, m.notif || {});
+  let base = m.sa ? ['ads', 'help', 'chat'] : isField(m) ? ['chat', 'agenda'] : ['reqs', 'quotes', 'chat', 'links', 'agenda', 'ads', 'help'].concat(canTeam(m) ? ['team'] : []);
+  return base.filter(k => N[k] !== false);
+}
+/* invio: chiede al «postino» (Cloudflare Worker) di avvisare i dispositivi di un'azienda o di una persona */
+function pushNotify(co, kind, title, body, url, mid) {
+  if (MODE !== 'firebase' || !window.NOTIFY_URL || !co) return;
+  try { fetch(window.NOTIFY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ co, mid: mid || '', kind, title: String(title).slice(0, 80), body: String(body || '').slice(0, 180), url: url || '#/notif', except: meId() || '' }), keepalive: true }).catch(() => { }); } catch (e) { }
+}
+/* chi avvisare, in base a cosa è cambiato nei dati */
+function afterWrite(c, id, b, a) {
+  if (MODE !== 'firebase' || !a || window.__SEEDING) return;
+  const nm = co => coName(co);
+  if (c === 'reqs') {
+    if (!b) (a.to || []).forEach(t => pushNotify(t, 'reqs', 'Nuova richiesta di quotazione', `${a.sub || a.macro} da ${nm(a.from)}`, '#/req/' + id));
+    else if (a.status === 'cancelled' && b.status !== 'cancelled') (a.to || []).forEach(t => pushNotify(t, 'reqs', 'Richiesta annullata', `${a.sub || a.macro} · ${nm(a.from)}`, '#/req/' + id));
+  }
+  if (c === 'quotes') {
+    const txt = `${a.sub || a.macro}: ${money(a.price)} ${a.unit} da ${nm(a.from)}`;
+    if (!b && a.status === 'sent') pushNotify(a.to, 'quotes', 'Nuova quotazione', txt, '#/quote/' + id);
+    else if (b && (a.ver || 1) > (b.ver || 1)) pushNotify(a.to, 'quotes', `Quotazione aggiornata (V${a.ver})`, txt, '#/quote/' + id);
+    else if (b && a.confirmedAt && !b.confirmedAt) pushNotify(a.from, 'quotes', 'Ricezione confermata', `${nm(a.to)} ha visualizzato la quotazione ${a.num}`, '#/quote/' + id);
+    else if (b && a.status === 'withdrawn' && b.status !== 'withdrawn') pushNotify(a.to, 'quotes', 'Quotazione ritirata', `${a.num} · ${nm(a.from)}`, '#/quote/' + id);
+  }
+  if (c === 'links') {
+    if (!b && a.status === 'pending') pushNotify(a.b, 'links', 'Richiesta di collegamento', `${nm(a.a)} vuole collegarsi`, '#/company/' + a.a);
+    else if (b && a.status === 'active' && b.status !== 'active') pushNotify(a.a, 'links', 'Collegamento accettato', `${nm(a.b)} ha accettato`, '#/company/' + a.b);
+  }
+  if (c === 'chats') {
+    const L = a.msgs || [], LB = (b && b.msgs) || [];
+    if (L.length > LB.length || (L.length && LB.length && L[L.length - 1].at !== LB[LB.length - 1].at)) { const last = L[L.length - 1]; const to = last.co === a.a ? a.b : a.a; pushNotify(to, 'chat', 'Messaggio da ' + nm(last.co), last.text, '#/chat/' + last.co); }
+  }
+  if (c === 'members' && !b && a.status === 'pending') pushNotify(a.co, 'team', 'Richiesta di accesso', `${a.name} ${a.surname || ''} chiede di entrare con il PIN`, '#/team');
+  if (c === 'events' && a.who && (!b || b.who !== a.who)) pushNotify(a.co, 'agenda', 'Nuovo evento in agenda', `${a.title} · ${fDate(a.date)}${a.time ? ' ' + a.time : ''}`, '#/evedit/' + id, a.who);
+  if (c === 'ads') {
+    if (a.status === 'review' && (!b || b.status !== 'review')) pushNotify('co_staff', 'ads', 'Annuncio da approvare', `${a.title} · ${nm(a.co)}`, '#/admin/ads');
+    if (b && b.status === 'review' && a.status === 'active') pushNotify(a.co, 'ads', 'Annuncio pubblicato', a.title, '#/myads');
+    if (b && b.status === 'review' && a.status === 'rejected') pushNotify(a.co, 'ads', 'Annuncio non approvato', `${a.title}: ${a.reason || ''}`, '#/myads');
+  }
+  if (c === 'tickets') {
+    if (!b) pushNotify('co_staff', 'help', 'Nuova richiesta di assistenza', `${a.subject} · ${nm(a.co)}`, '#/admin/help');
+    else if ((a.replies || []).length > ((b.replies || []).length)) { const r = a.replies[a.replies.length - 1]; if (r.staff) pushNotify(a.co, 'help', 'Risposta dall\'assistenza', r.text, '#/help/' + id); else pushNotify('co_staff', 'help', 'Nuova risposta in assistenza', `${a.subject}: ${r.text}`, '#/admin/help'); }
+  }
+}
+/* badge sull'icona dell'app = notifiche da leggere */
+let _lastBadge = -1;
+function updateBadge() {
+  if (!('setAppBadge' in navigator) || !me()) return;
+  const n = notifCount(); if (n === _lastBadge) return; _lastBadge = n;
+  try { if (n > 0) navigator.setAppBadge(n); else navigator.clearAppBadge(); } catch (e) { }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && navigator.serviceWorker && navigator.serviceWorker.getRegistration) navigator.serviceWorker.getRegistration().then(r => r && r.getNotifications && r.getNotifications().then(ns => ns.forEach(n => n.close()))).catch(() => { }); });
+
+/* attivazione su questo dispositivo */
+function tokId(t) { let h = 0; for (const ch of t) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return 'p_' + h.toString(36) + t.length; }
+async function savePushDoc(token) { const m = me(); const id = tokId(token); lsSet('rp_push', JSON.stringify({ id, token, mid: m.id })); const o = { token, co: m.co, mid: m.id, kinds: memberKinds(m), ua: navigator.userAgent.slice(0, 120), at: nowISO() }; await FS.collection('push').doc(id).set(o); }
+function pushLocal() { try { return JSON.parse(lsGet('rp_push') || 'null'); } catch (e) { return null; } }
+ACT.pushOn = async () => {
+  if (!pushReady()) return toast('Notifiche non disponibili in questa versione.');
+  if (isIOS() && !isStandalone()) return modal(`<h3 style="margin:0">Prima aggiungi l'app alla schermata Home</h3><p class="mut" style="margin:0">Su iPhone le notifiche funzionano solo per l'app installata (iOS 16.4 o successivo):<br>1. in Safari tocca <b>Condividi</b> ⬆️<br>2. <b>Aggiungi alla schermata Home</b><br>3. apri RifiutiPro dall'icona e torna qui.</p><button class="bt" data-act="mClose">Ho capito</button>`);
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return toast('Permesso negato: puoi riattivarlo dalle impostazioni del telefono.');
+    toast('Attivo le notifiche…');
+    const reg = await navigator.serviceWorker.register('sw.js'); await navigator.serviceWorker.ready;
+    if (!window.firebase.messaging) await loadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+    const token = await firebase.messaging().getToken({ vapidKey: window.FCM_VAPID_KEY, serviceWorkerRegistration: reg });
+    if (!token) return toast('Il dispositivo non ha restituito un codice di notifica.');
+    await savePushDoc(token); log('Notifiche attivate su un dispositivo'); toast('Notifiche attive su questo dispositivo'); render();
+  } catch (e) { console.error(e); toast('Attivazione non riuscita: ' + (e && (e.code || e.message) || 'errore')); }
+};
+ACT.pushOff = async () => { const P = pushLocal(); if (P) { try { await FS.collection('push').doc(P.id).delete(); } catch (e) { } try { await firebase.messaging().deleteToken(); } catch (e) { } } lsSet('rp_push', null); toast('Notifiche disattivate su questo dispositivo'); render(); };
+ACT.pushTest = () => { const m = me(); pushNotify(m.co, 'chat', 'Prova di notifica', 'Se leggi questo messaggio, le notifiche funzionano.', '#/privacy', m.id); toast('Inviata: chiudi l\'app e attendi qualche secondo'); };
+/* aggiorna i tipi di avviso quando cambiano le preferenze o l'utente */
+function pushRefresh() { const P = pushLocal(); const m = me(); if (!P || !m || MODE !== 'firebase' || !FS) return; if (P.mid !== m.id) { savePushDoc(P.token).catch(() => { }); return; } FS.collection('push').doc(P.id).set({ kinds: memberKinds(m), co: m.co, mid: m.id }, { merge: true }).catch(() => { }); }
+const _ntf = ACT.ntf; ACT.ntf = el => { _ntf(el); setTimeout(pushRefresh, 300); };
+const _logout = ACT.logout; ACT.logout = () => { const P = pushLocal(); if (P && MODE === 'firebase' && FS) { FS.collection('push').doc(P.id).delete().catch(() => { }); lsSet('rp_push', null); } _logout(); };
+
+/* schermata Privacy e preferenze, con la sezione notifiche push */
+XR.privacy = () => {
+  const m = me(); const N = Object.assign({ quotes: true, reqs: true, chat: true, links: true, team: true, agenda: true, ads: true, help: true, email: true, promo: !!m.mkt }, m.notif || {});
+  const t = (k, l) => `<label class="cbx"><input type="checkbox" data-act="ntf" data-k="${k}" ${N[k] !== false ? 'checked' : ''}><span>${l}</span></label>`;
+  const P = pushLocal(); const on = !!(P && P.mid === m.id && 'Notification' in window && Notification.permission === 'granted');
+  const avail = memberKinds(Object.assign({}, m, { notif: {} }));
+  let pushBox;
+  if (!pushReady()) pushBox = `<div class="info">Le notifiche ad app chiusa funzionano nella versione installata da <b>canvas20.github.io/rifiutipro-prova</b>${MODE === 'firebase' && !window.NOTIFY_URL ? ', appena sarà attivo il servizio di invio' : ''}.</div>`;
+  else if (on) pushBox = `<div class="ok">✓ Notifiche attive su questo dispositivo, anche ad app chiusa, con il numero sull'icona.</div><div class="two"><button class="bt gh s" data-act="pushTest">Invia una prova</button><button class="bt rd s" data-act="pushOff">Disattiva qui</button></div>`;
+  else pushBox = `<button class="bt g" data-act="pushOn">🔔 Attiva le notifiche su questo dispositivo</button><span class="hint">${isIOS() ? 'iPhone: prima «Aggiungi alla schermata Home» da Safari, poi apri l\'app dall\'icona (iOS 16.4 o successivo).' : 'Il telefono ti chiederà il permesso: tocca «Consenti».'}</span>`;
+  return {
+    h: header('t', 'Privacy e preferenze', { back: '#/profile' }), b: `<div class="card"><h3>Notifiche sul telefono</h3>${pushBox}</div>
+  <div class="card"><h3>Cosa vuoi ricevere</h3>${avail.map(k => t(k, PUSH_KINDS[k])).join('')}${t('email', 'Riepilogo via email')}${t('promo', 'Comunicazioni promozionali')}<span class="hint">Valgono per la campanella e per le notifiche sul telefono. Ognuno sceglie per sé.</span></div>
+  <div class="card"><h3>Password</h3><span class="sm mut">In prova le password non vengono salvate. Nella versione definitiva: cambio password con conferma via email.</span></div>
+  <div class="card"><h3>I tuoi dati</h3><button class="bt gh" data-act="expData">Esporta i dati della mia azienda (JSON)</button><button class="bt rd" data-act="askDel">Chiedi la cancellazione dell'account</button><span class="hint">La richiesta arriva all'assistenza di Soluzione Rifiuti.</span></div>` };
+};
+/* invito discreto in Home ad attivare le notifiche */
+function pushInvite() { if (!pushReady() || !me()) return ''; const P = pushLocal(); if (P && P.mid === meId() && Notification.permission === 'granted') return ''; if (lsGet('rp_push_skip')) return ''; return `<div class="info row"><span class="sp">🔔 <b>Vuoi le notifiche anche ad app chiusa?</b></span><button class="bt s" data-go="#/privacy">Attiva</button><button class="x" data-act="pushSkip" aria-label="Chiudi">×</button></div>`; }
+ACT.pushSkip = () => { lsSet('rp_push_skip', '1'); render(); };
+
 /* ============ avvio ============ */
 render();
 initStore();

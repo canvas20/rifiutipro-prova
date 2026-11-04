@@ -102,8 +102,8 @@ function deepMerge(a, b) { for (const k in b) { const v = b[k]; if (v && typeof 
 function ref(c, id) { return MODE === 'firebase' ? FS.collection(c).doc(id) : DB.collection(c).doc(id); }
 function modeTxt() { return MODE === 'firebase' ? 'Dati condivisi (archivio Firebase)' : MODE === 'db' ? 'Dati condivisi su claude.ai' : 'Dati salvati solo su questo dispositivo'; }
 const SHARED = () => MODE === 'db' || MODE === 'firebase';
-async function put(c, id, obj) { D[c] = Object.assign({}, D[c], { [id]: obj }); sched(); if (SHARED()) { try { await ref(c, id).set(clone(obj)); } catch (e) { failW(e); } } else saveLocal(); }
-async function patch(c, id, p) { const cur = clone(D[c][id] || {}); D[c] = Object.assign({}, D[c], { [id]: deepMerge(cur, clone(p)) }); sched(); if (SHARED()) { try { if (MODE === 'firebase') await ref(c, id).set(clone(p), { merge: true }); else await ref(c, id).update(clone(p)); } catch (e) { failW(e); } } else saveLocal(); }
+async function put(c, id, obj) { const _b = D[c] && D[c][id] ? clone(D[c][id]) : null; D[c] = Object.assign({}, D[c], { [id]: obj }); sched(); try { if (typeof afterWrite === 'function') afterWrite(c, id, _b, D[c][id]); } catch (e) { console.error(e); } if (SHARED()) { try { await ref(c, id).set(clone(obj)); } catch (e) { failW(e); } } else saveLocal(); }
+async function patch(c, id, p) { const _b = D[c] && D[c][id] ? clone(D[c][id]) : null; const cur = clone(D[c][id] || {}); D[c] = Object.assign({}, D[c], { [id]: deepMerge(cur, clone(p)) }); sched(); try { if (typeof afterWrite === 'function') afterWrite(c, id, _b, D[c][id]); } catch (e) { console.error(e); } if (SHARED()) { try { if (MODE === 'firebase') await ref(c, id).set(clone(p), { merge: true }); else await ref(c, id).update(clone(p)); } catch (e) { failW(e); } } else saveLocal(); }
 async function del(c, id) { const o = Object.assign({}, D[c]); delete o[id]; D[c] = o; sched(); if (SHARED()) { try { await ref(c, id).delete(); } catch (e) { failW(e); } } else saveLocal(); }
 /* immagini: ridotte e compresse (max ~180 KB) e salvate come documento a sé */
 function compressImage(file, maxSide = 1100) {

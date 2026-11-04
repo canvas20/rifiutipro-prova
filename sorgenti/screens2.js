@@ -55,7 +55,7 @@ function vHome() {
   const vetr = `<a class="wide w-navy" href="#/vetrina"><span class="vi">${IC.shop}</span><span><b>VETRINA</b><small>Consulenti, avvocati, noleggi e attrezzature nella tua zona</small></span><span class="ar">›</span></a>`;
   if (!g) {
     const recent = quotesToMe().sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt))).slice(0, 3);
-    return { h: header('home'), t: 'home', b: `${banner()}${coCard}${tiles}${foto}${vetr}${zoneLine()}${adBig()}
+    return { h: header('home'), t: 'home', b: `${banner()}${pushInvite()}${coCard}${tiles}${foto}${vetr}${zoneLine()}${adBig()}
     <div class="card"><div class="row"><h3 class="sp">Quotazioni ricevute recenti</h3><a href="#/quotes">Vedi tutte</a></div>${recent.length ? `<div class="list">${recent.map(quoteRow).join('')}</div>` : '<span class="mut sm">Ancora nessuna quotazione. Collegati a un impianto e chiedi una quotazione.</span>'}<span class="hint">Le quotazioni sono private: le vedi solo tu e l'azienda che te le ha inviate.</span></div>
     ${canWrite(m) ? '<button class="bt" data-act="newReq">Richiedi quotazione ai tuoi collegamenti</button>' : ''}${ftr()}` };
   }
@@ -64,7 +64,7 @@ function vHome() {
   const kpi = `<div class="card"><div class="row"><h3 class="sp">Panoramica</h3><span class="mut sm">ultimi 30 giorni</span></div><div class="kp"><div><span>Quotazioni inviate</span><b>${qs.filter(q => q.from === co.id).length}</b></div><div><span>Quotazioni ricevute</span><b>${qs.filter(q => q.to === co.id).length}</b></div><div><span>Aziende collegate</span><b>${np}</b></div><div><span>Richieste ricevute</span><b>${reqsToMe().filter(inR).length}</b></div></div></div>`;
   const logs = ((D.logs[co.id] && D.logs[co.id].items) || []).slice(0, 4);
   return {
-    h: header('home'), t: 'home', b: `${banner()}${coCard}${tiles}${foto}${vetr}${zoneLine()}${adBig()}${expiringBox()}
+    h: header('home'), t: 'home', b: `${banner()}${pushInvite()}${coCard}${tiles}${foto}${vetr}${zoneLine()}${adBig()}${expiringBox()}
   ${canWrite(m) ? `<div class="two"><button class="bt g" data-act="newReq">Richiedi quotazione</button><button class="bt" data-go="#/quotes/req">Invia quotazione${open.length ? ' · ' + open.length + ' in attesa' : ''}</button></div>` : '<div class="info">Il tuo ruolo è «Solo visualizzazione»: vedi tutto ma non invii richieste o quotazioni.</div>'}
   ${!planOn(co) ? `<div class="warn">Ricevere è gratis. Per <b>inviare</b> quotazioni attiva il piano (5,00 €/mese o 50,00 €/anno). <a href="#/plan"><b>Il tuo piano</b></a></div>` : ''}
   ${kpi}

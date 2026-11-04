@@ -25,6 +25,7 @@ function render() {
   let v;
   try { v = view(); } catch (e) { console.error(e); v = { h: header('t', 'Errore', { back: '#/home' }), b: `<div class="err">Qualcosa non ha funzionato: ${esc(e.message)}</div>` }; }
   app.innerHTML = (v.h || '') + `<main class="ct ${v.t ? '' : 'nt'}">${v.b}</main>` + (v.t ? tabs(v.t) : '');
+  try { if (typeof updateBadge === 'function') updateBadge(); } catch (e) { }
   if (af) { const el = app.querySelector(`[data-f="${af}"]`); if (el) { el.focus({ preventScroll: true }); try { if (ss != null) el.setSelectionRange(ss, se); } catch (e) { } } }
   if (!v.top) window.scrollTo(0, sy);
   if (v.after) v.after();
