@@ -49,7 +49,7 @@ function vHome() {
   const tiles = `<div class="tiles">
    <a class="tile t-g" href="#/quotes">${IC.tag}${g ? (nq ? `<em>${nq} nuove</em>` : '') : (nq ? `<em>${nq} non viste</em>` : '')}<b>Quotazioni</b><span>${g ? 'Inviate e ricevute' : 'Ricevute dai collegati'}</span></a>
    <a class="tile t-b" href="#/companies">${IC.people}${lr ? `<em>${lr} richiest${lr > 1 ? 'e' : 'a'}</em>` : `<em>${np} collegat${np === 1 ? 'a' : 'e'}</em>`}<b>Aziende collegate</b><span>${g ? 'La tua rete commerciale' : 'Impianti e trasportatori'}</span></a>
-   <a class="tile t-t" href="#/fotoeer">${IC.cam}<b>Codice EER da foto</b><span>Scatta o carica una foto</span></a>
+   <a class="tile t-t" href="#/fotoeer">${IC.cam}<b>Fotografa e ottieni codice EER</b><span>Scatta o carica foto</span></a>
    <a class="tile t-o" href="#/companies/search">${IC.search}<b>Cerca aziende</b><span>Trova nuovi operatori</span></a></div>`;
   const foto = '';
   const vetr = `<a class="wide w-navy" href="#/vetrina"><span class="vi">${IC.shop}</span><span><b>VETRINA</b><small>Consulenti, avvocati, noleggi e attrezzature nella tua zona</small></span><span class="ar">›</span></a>`;
@@ -190,8 +190,8 @@ function vNewReq(preTo) {
   ${N.err ? `<div class="err">${esc(N.err)}</div>` : ''}
   <div class="sec">Rifiuto (una richiesta = un solo rifiuto)</div>
   ${fld('Macroarea', sel('nr', 'macro', macroList().concat([['__nuova', '+ Aggiungi nuova macroarea…']]), 'data-rr'), 1)}
-  ${fld('Sottocategoria', fv('nr', 'sub') === '__altro' ? `<div class="row" style="gap:6px">${inp('nr', 'subx', 'Scrivi qui il rifiuto, es. Rame in treccia', 'text', 'autofocus')}<button class="bt gh s" data-act="nrSubList" title="Torna all'elenco" style="flex:none">Elenco</button></div>` : sel('nr', 'sub', [['', 'Scegli…']].concat(subsFor(N.macro)).concat([['__altro', 'Altro (scrivi tu)']]), 'data-rr'), 1)}
-  ${fld('Descrizione (facoltativa)', inp('nr', 'descr', 'Es. cavi elettrici già separati'))}
+  ${fld('Descrizione', fv('nr', 'sub') === '__altro' ? `<div class="row" style="gap:6px">${inp('nr', 'subx', 'Scrivi qui il rifiuto, es. Rame in treccia', 'text', 'autofocus')}<button class="bt gh s" data-act="nrSubList" title="Torna all'elenco" style="flex:none">Elenco</button></div>` : sel('nr', 'sub', [['', 'Scegli…']].concat(subsFor(N.macro)).concat([['__altro', 'Altro (scrivi tu)']]), 'data-rr'), 1)}
+  ${fld('Altri dettagli (facoltativo)', inp('nr', 'descr', 'Es. cavi elettrici già separati'))}
   ${fld('Codice EER (facoltativo)', inp('nr', 'eer', 'Es. 17 04 01 oppure «rame»', 'text', 'data-live'), 0, sugg.length ? sugg.map(c => `<a href="#" data-act="nrEer" data-c="${c[0]}" class="tag">${eerNorm(c[0])}${c[1] ? '*' : ''} ${esc(c[3].slice(0, 40))}</a>`).join(' ') : 'Scrivi il codice o una parola per cercarlo. Non è obbligatorio.')}
   <div class="two">${fld('Quantità stimata', inp('nr', 'qty', 'Es. 350', 'text', 'inputmode="decimal"'))}${fld('Unità', sel('nr', 'unit', ['kg', 't', 'pezzi', 'm³', 'litri']))}</div>
   ${cbx('nr', 'transport', 'Serve il trasporto')}
@@ -213,7 +213,7 @@ ACT.nrSend = () => {
   const sub = N.sub === '__altro' ? String(N.subx || '').trim() : N.sub;
   const to = Object.keys(N.to).filter(k => N.to[k]);
   const err = t => { N.err = t; render(); window.scrollTo(0, 0); };
-  if (!sub) return err('Scegli la sottocategoria del rifiuto.');
+  if (!sub) return err('Scegli o scrivi la descrizione del rifiuto.');
   let eer = ''; if (String(N.eer || '').trim()) { eer = eerNorm(N.eer); if (!eer) return err('Codice EER non valido: 6 cifre, es. 17 04 01. Puoi anche lasciarlo vuoto.'); }
   if (!to.length) return err('Scegli almeno un\'azienda collegata.');
   const id = uid('rq_'); const r = { photos: (N.photos || []).slice(0, 3), num: 'RR-' + new Date().getFullYear() + '-' + num9(), from: co.id, by: m.id, to, macro: N.macro, sub, descr: String(N.descr || '').trim(), eer, qty: String(N.qty || '').trim(), unit: N.unit || 'kg', transport: !!N.transport, place: String(N.place || '').trim(), note: String(N.note || '').trim(), status: 'open', resp: {}, createdAt: nowISO() };
