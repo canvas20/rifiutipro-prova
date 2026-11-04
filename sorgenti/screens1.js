@@ -125,7 +125,7 @@ function vActivated() {
   const co = myCo(); const g = isG(co);
   return { h: header('logo'), b: `<div style="text-align:center;font-size:54px">✅</div><h2 class="ttl" style="text-align:center">Account attivato</h2>
   <div class="card"><span><b>${esc(co.name)}</b> è registrata come ${g ? (co.types || []).map(t => `<span class="tag g">${TYPES[t]}</span>`).join(' ') : '<span class="tag">Visualizzatore</span>'}</span>
-  <span class="mut sm">Ora puoi cercare aziende, collegarti e ${g ? 'ricevere richieste. Per <b>inviare</b> quotazioni serve il piano: 5,00 € al mese o 50,00 € all\'anno.' : 'chiedere quotazioni ai tuoi collegamenti. Per te è gratis.'}</span></div>
+  <span class="mut sm">Ora puoi cercare aziende, collegarti e ${g ? 'ricevere richieste. Per <b>inviare</b> quotazioni serve il piano: ' + eur(PRICE.m) + ' al mese o ' + eur(PRICE.y) + ' all\'anno.' : 'chiedere quotazioni ai tuoi collegamenti. Per te è gratis.'}</span></div>
   <button class="bt g" data-go="#/home">Vai alla Home</button>${g ? '<button class="bt ln" data-go="#/plan">Scegli il piano</button>' : ''}
   ${g && !(co.auth && co.auth.declared) ? '<div class="info">Puoi completare le autorizzazioni più tardi da Profilo › Autorizzazioni.</div>' : ''}` };
 }
@@ -160,6 +160,7 @@ function vReg() {
     ${fld('Email', inp('reg', 'email', 'nome@azienda.it', 'email'), 1)}
     ${fld('Password', inp('reg', 'pw', 'Almeno 10 caratteri', 'password', 'data-live'), 1, `${c1 ? '✓' : '○'} Almeno 10 caratteri · ${c2 ? '✓' : '○'} una lettera · ${c3 ? '✓' : '○'} un numero<br>In prova la password non viene salvata.`)}
     ${cbx('reg', 'tos', 'Accetto i Termini di servizio <b>(obbligatorio)</b>')}${cbx('reg', 'priv', 'Ho letto l\'Informativa privacy <b>(obbligatorio)</b>')}${cbx('reg', 'mkt', 'Comunicazioni promozionali (facoltativo)')}
+    ${fld('Codice regalo (facoltativo)', inp('reg', 'gift', 'Es. RP-AB12-CD34', 'text', 'autocapitalize="characters" style="text-transform:uppercase"'), 0, 'Se hai ricevuto un codice regalo, scrivilo qui: vale un anno di abbonamento.')}
     <span class="hint">Nessuna email adesso: la conferma arriva una sola volta, alla fine della registrazione. RifiutiPro non sostituisce FIR, RENTRI, MUD o altri adempimenti di legge.</span>
     <div class="two">${back}<button class="bt" data-act="regNext">Continua</button></div>`;
   } else if ((st === 3 && !g) || (st === 4 && g)) {
@@ -201,6 +202,7 @@ ACT.regNext = () => {
     if (all('members').some(m => (m.email || '').toLowerCase() === em)) return vErr('Questa email è già registrata: accedi.');
     const pw = fv('reg', 'pw'); if (pw.length < 10 || !/[a-z]/i.test(pw) || !/\d/.test(pw)) return vErr('La password deve avere almeno 10 caratteri, una lettera e un numero.');
     if (!fv('reg', 'tos') || !fv('reg', 'priv')) return vErr('Accetta Termini di servizio e Informativa privacy.');
+    const gc = codeId(fv('reg', 'gift')); if (gc && gc !== 'PROVA2026') { const gp = get('promo', gc); if (!gp) return vErr('Codice regalo non valido: controllalo o lascia vuoto il campo.'); if (gp.usedBy) return vErr('Questo codice regalo è già stato usato.'); }
   } else if ((st === 3 && !g) || (st === 4 && g)) {
     const priv = !g && fv('reg', 'priv2');
     if (priv) { if (!f('cf')) return vErr('Inserisci il codice fiscale.'); }
@@ -235,7 +237,8 @@ function createCompany() {
   const co = { kind: R.kind, priv: !!priv, types: g ? R.types.slice() : [], name: priv ? (f('name') + ' ' + f('surname')) : f('coname'), piva: priv ? '' : f('piva'), cf: f('cf'), addr: f('addr'), city: f('city'), prov: f('prov').toUpperCase(), phone: f('phone'), email: f('email').toLowerCase(), pres: '', pin: newPin(), createdAt: nowISO(), waste: g ? wasteFromForm('reg').list : [], auth: g ? authFromForm('reg') : {}, plan: null };
   const mem = { co: coId, name: f('name'), surname: f('surname'), email: f('email').toLowerCase(), role: 'admin', status: 'active', emailOk: false, createdAt: nowISO(), mkt: !!fv('reg', 'mkt') };
   put('companies', coId, co); put('members', mId, mem);
-  setMe(mId); U.reg = null;
+  setMe(mId); const giftCode = fv('reg', 'gift'); U.reg = null;
+  if (String(giftCode || '').trim()) setTimeout(() => { const r = redeemCode(giftCode, get('companies', coId)); toast(r.msg); }, 120);
   setTimeout(() => log('Registrazione dell\'azienda ' + co.name + ' (' + (g ? 'Gestore ambientale' : 'Visualizzatore') + ')', coId), 50);
   go('#/home');
 }

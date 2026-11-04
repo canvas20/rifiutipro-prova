@@ -8,7 +8,7 @@ codes.sort(key=lambda x:x[0])
 data={'ch':eer['ch'],'codes':codes}
 logo=open('wordmark.svg').read().strip()
 css=open('app.css').read()
-js='\n'.join(open(f).read() for f in ['core.js','screens1.js','screens2.js','screens3.js','screens4.js','screens5.js','main.js'])
+js='\n'.join(open(f).read() for f in ['core.js','screens1.js','screens2.js','screens3.js','screens4.js','screens5.js','screens6.js','main.js'])
 def page(site):
     head='<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><script src="config.js"></script>' if site else ''
     return f'''<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0057F5"><meta name="color-scheme" content="light"><title>RifiutiPro prova</title>{head}<style>{css}</style></head><body><div id="app"></div><script>window.__EER__={json.dumps(data,ensure_ascii=False)};window.__LOGO__={json.dumps(logo)};</script><script>{js}</script></body></html>'''

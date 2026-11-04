@@ -1,4 +1,4 @@
-/* v7 
+/* v8 
  * RifiutiPro · «postino» delle notifiche (Cloudflare Worker, piano gratuito)
  *
  * L'app chiede: «avvisa l'azienda X (o la persona Y) che è arrivata una quotazione».
@@ -39,11 +39,17 @@ export default {
     const token = await accessToken(sa);
     const devices = await findDevices(sa.project_id, token, co);
     const targets = devices.filter(d => (!mid || d.mid === mid) && (!except || d.mid !== except) && (!d.kinds || d.kinds.includes(kind)));
+    const rawUrl = clip(msg.url, 400);
+    const link = /^https:\/\//.test(rawUrl) && rawUrl.startsWith(origin) ? rawUrl : origin + '/rifiutipro-prova/' + (rawUrl.startsWith('#') ? rawUrl : '#/notif');
+    const base = link.split('#')[0].replace(/[^/]*$/, '');
     let sent = 0, removed = 0;
     await Promise.all(targets.map(async d => {
       const r = await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
         method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: { token: d.token, data: { title: clip(msg.title, 80) || 'RifiutiPro', body: clip(msg.body, 180), url: clip(msg.url, 120) || '#/notif', tag: kind + '-' + Date.now() }, webpush: { headers: { Urgency: 'high', TTL: '86400' } } } }),
+        body: JSON.stringify({ message: { token: d.token, data: { title: clip(msg.title, 80) || 'RifiutiPro', body: clip(msg.body, 180), url: link, kind },
+          webpush: { headers: { Urgency: 'high', TTL: '86400' },
+            notification: { title: clip(msg.title, 80) || 'RifiutiPro', body: clip(msg.body, 180), icon: base + 'icon-192.png', badge: base + 'icon-192.png', tag: kind + '-' + Date.now(), renotify: true, requireInteraction: true, vibrate: [200, 100, 200, 100, 300], silent: false, timestamp: Date.now() },
+            fcm_options: { link } } } }),
       });
       if (r.ok) { sent++; return; }
       const t = await r.text();

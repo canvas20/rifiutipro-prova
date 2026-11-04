@@ -11,7 +11,7 @@ function memberKinds(m) {
 /* invio: chiede al «postino» (Cloudflare Worker) di avvisare i dispositivi di un'azienda o di una persona */
 function pushNotify(co, kind, title, body, url, mid, self) {
   if (MODE !== 'firebase' || !window.NOTIFY_URL || !co) return;
-  try { fetch(window.NOTIFY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ co, mid: mid || '', kind, title: String(title).slice(0, 80), body: String(body || '').slice(0, 180), url: url || '#/notif', except: self ? '' : (meId() || '') }), keepalive: true }).catch(() => { }); } catch (e) { }
+  try { fetch(window.NOTIFY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ co, mid: mid || '', kind, title: String(title).slice(0, 80), body: String(body || '').slice(0, 180), url: location.origin + location.pathname + (url || '#/notif'), except: self ? '' : (meId() || '') }), keepalive: true }).catch(() => { }); } catch (e) { }
 }
 /* chi avvisare, in base a cosa è cambiato nei dati */
 function afterWrite(c, id, b, a) {
@@ -90,7 +90,7 @@ XR.privacy = () => {
   const avail = memberKinds(Object.assign({}, m, { notif: {} }));
   let pushBox;
   if (!pushReady()) pushBox = `<div class="info">Le notifiche ad app chiusa funzionano nella versione installata da <b>canvas20.github.io/rifiutipro-prova</b>${MODE === 'firebase' && !window.NOTIFY_URL ? ', appena sarà attivo il servizio di invio' : ''}.</div>`;
-  else if (on) pushBox = `<div class="ok">✓ Notifiche attive su questo dispositivo, anche ad app chiusa, con il numero sull'icona.</div><div class="two"><button class="bt gh s" data-act="pushTest">Invia una prova</button><button class="bt rd s" data-act="pushOff">Disattiva qui</button></div>`;
+  else if (on) pushBox = `<div class="ok">✓ Notifiche attive su questo dispositivo, anche ad app chiusa, con il numero sull'icona.</div>${isIOS() ? `<details class="info sm"><summary><b>Arriva solo il pallino rosso, senza banner o suono?</b></summary><ol style="margin:6px 0 0;padding-left:18px"><li>Apri <b>Impostazioni</b> dell'iPhone › <b>Notifiche</b> › <b>RifiutiPro</b>.</li><li>Attiva <b>Consenti notifiche</b>, <b>Suoni</b> e <b>Badge</b>.</li><li>In <b>Avvisi</b> spunta <b>Schermata di blocco</b>, <b>Centro notifiche</b> e <b>Banner</b>; come <b>Stile banner</b> scegli <b>Persistente</b>.</li><li>In <b>Consegna notifiche</b> scegli <b>Immediata</b> (non «Riepilogo programmato»).</li><li>Controlla che l'iPhone non sia in <b>modalità silenziosa</b> (campanella barrata) né in <b>Full immersion / Non disturbare</b>.</li></ol></details>` : ''}<div class="two"><button class="bt gh s" data-act="pushTest">Invia una prova</button><button class="bt rd s" data-act="pushOff">Disattiva qui</button></div>`;
   else pushBox = `<button class="bt g" data-act="pushOn">🔔 Attiva le notifiche su questo dispositivo</button><span class="hint">${isIOS() ? 'iPhone: prima «Aggiungi alla schermata Home» da Safari, poi apri l\'app dall\'icona (iOS 16.4 o successivo).' : 'Il telefono ti chiederà il permesso: tocca «Consenti».'}</span>`;
   return {
     h: header('t', 'Privacy e preferenze', { back: '#/profile' }), b: `<div class="card"><h3>Notifiche sul telefono</h3>${pushBox}</div>
