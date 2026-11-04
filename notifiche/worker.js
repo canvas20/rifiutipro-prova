@@ -1,4 +1,4 @@
-/* v4 
+/* v5 
  * RifiutiPro · «postino» delle notifiche (Cloudflare Worker, piano gratuito)
  *
  * L'app chiede: «avvisa l'azienda X (o la persona Y) che è arrivata una quotazione».
@@ -18,6 +18,7 @@ export default {
     if (req.method === 'GET') {
       let stato = 'manca il segreto SERVICE_ACCOUNT';
       if (env.SERVICE_ACCOUNT) { try { const sa = JSON.parse(env.SERVICE_ACCOUNT); stato = sa.client_email && sa.private_key ? 'chiave Firebase valida (progetto ' + sa.project_id + ')' : 'il segreto SERVICE_ACCOUNT non è la chiave Firebase giusta'; if (new URL(req.url).searchParams.get('verifica') === '1' && sa.private_key) { await accessToken(sa); stato += ', accesso a Google riuscito'; } } catch (e) { stato = 'problema con SERVICE_ACCOUNT: ' + (e.message || e); } }
+      if (new URL(req.url).searchParams.get('dispositivi') === '1' && env.SERVICE_ACCOUNT) { try { const sa = JSON.parse(env.SERVICE_ACCOUNT); const tk = await accessToken(sa); const r = await fetch(`https://firestore.googleapis.com/v1/projects/${sa.project_id}/databases/(default)/documents/push?pageSize=100`, { headers: { Authorization: 'Bearer ' + tk } }); const j = await r.json(); const L = (j.documents || []).map(d => { const f = d.fields || {}; return (f.co && f.co.stringValue) + ' / ' + (f.mid && f.mid.stringValue) + ' / ' + ((f.ua && f.ua.stringValue) || '').replace(/^Mozilla\/5.0 \(([^;)]+).*$/, '$1') + ' / ' + (f.at && f.at.stringValue); }); stato += ' · dispositivi registrati: ' + L.length + (L.length ? '\n' + L.join('\n') : ''); } catch (e) { stato += ' · errore lettura dispositivi: ' + e.message; } }
       return new Response('RifiutiPro: postino delle notifiche attivo · ' + stato, { headers: Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, cors) });
     }
     if (req.method !== 'POST') return new Response('Metodo non ammesso', { status: 405, headers: cors });

@@ -21,4 +21,4 @@ jobs:
       - name: Controlla il postino
         run: |
           sleep 5
-          curl -s "https://solitary-moon-3203.carrubba-gi.workers.dev/?verifica=1"; echo
+          curl -s "https://solitary-moon-3203.carrubba-gi.workers.dev/?verifica=1&dispositivi=1"; echo
