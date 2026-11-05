@@ -1,4 +1,5 @@
-/* v8 
+import EER from './eer_elenco.json' with { type: 'json' };
+/* v9 
  * RifiutiPro · «postino» delle notifiche (Cloudflare Worker, piano gratuito)
  *
  * L'app chiede: «avvisa l'azienda X (o la persona Y) che è arrivata una quotazione».
@@ -118,13 +119,27 @@ Non indicare codici EER: la provenienza del rifiuto la chiederà l'app.`;
   if (!MATERIALI[o.materiale]) o.materiale = 'altro';
   return { ok: true, oggetto: String(o.oggetto || '').slice(0, 80), materiale: o.materiale, descrizione: String(o.descrizione || '').slice(0, 300), pericolo: !!o.pericolo, nota_pericolo: String(o.nota_pericolo || '').slice(0, 200), piu_rifiuti: !!o.piu_rifiuti, affidabilita: ['alta', 'media', 'bassa'].includes(o.affidabilita) ? o.affidabilita : 'media', modello: r.model };
 }
+const EERC = new Map(EER.codes.map(c => [c[0], c]));
+const eerFmt = c => c.slice(0, 2) + ' ' + c.slice(2, 4) + ' ' + c.slice(4, 6);
+const eerSub = c => c.slice(0, 2) + ' ' + c.slice(2, 4) + ' — ' + (EER.sub[c.slice(0, 4)] || '');
 async function proponi(b, env) {
-  const c = k => String(b[k] || '').slice(0, 300);
-  const istr = `Sei un consulente ambientale italiano. Proponi il codice EER (Decisione 2000/532/CE come modificata dalla 2014/955/UE) per questo rifiuto, seguendo le Linee guida SNPA sulla classificazione:
-1) individua prima la fonte che genera il rifiuto nei capitoli 01-12 e 17-20; 2) se non c'è, cerca nei capitoli 13, 14, 15; 3) poi nel capitolo 16; 4) solo alla fine un codice 99. Per i codici a specchio segnala la verifica di pericolosità. Per il capitolo 20 verifica che sia rifiuto urbano (art. 183, c. 1, lett. b-ter, d.lgs. 152/2006, allegati L-quater e L-quinquies). Non assecondare l'utente se i dati portano altrove. Se i dati non bastano, rispondi "non determinabile".
-Dati: oggetto: ${c('oggetto')}; materiale: ${c('materiale')}; attività che ha prodotto il rifiuto: ${c('attivita')}; processo o motivo dello scarto: ${c('processo')}; altre informazioni: ${c('dettaglio')}.
-Rispondi SOLO con JSON: {"codice": "6 cifre con spazi, es. 16 01 18 (asterisco se pericoloso) oppure non determinabile", "descrizione": "descrizione ufficiale della voce", "motivazione": "2-3 frasi", "alternative": [{"codice": "...", "motivo": "perché scartato"}], "verifiche": ["..."]}`;
-  const r = await aiRun(env, [{ role: 'user', content: istr }], 600);
-  const o = parseJson(r.text);
-  return { ok: true, codice: String(o.codice || '').slice(0, 30), descrizione: String(o.descrizione || '').slice(0, 200), motivazione: String(o.motivazione || '').slice(0, 800), alternative: (Array.isArray(o.alternative) ? o.alternative : []).slice(0, 5).map(a => ({ c: String(a.codice || '').slice(0, 20), d: String(a.motivo || '').slice(0, 200) })), verifiche: (Array.isArray(o.verifiche) ? o.verifiche : []).slice(0, 5).map(v => String(v).slice(0, 200)), modello: r.model };
+  const c = k => String(b[k] || '').slice(0, 600);
+  const dati = `oggetto riconosciuto nella foto: ${c('oggetto') || '—'}; materiale: ${c('materiale') || '—'}${b.materiale_desc ? ' — DESCRIZIONE DELL\'UTENTE: «' + c('materiale_desc') + '»' : ''}; attività che ha prodotto il rifiuto: ${c('attivita') || '—'}${b.attivita_desc ? ' — DESCRIZIONE DELL\'UTENTE: «' + c('attivita_desc') + '»' : ''}; processo o motivo dello scarto: ${c('processo') || '—'}; altre informazioni: ${c('dettaglio') || '—'}`;
+  const metodo = `Metodo obbligatorio (Linee guida SNPA, Decisione 2000/532/CE mod. 2014/955/UE): 1) cerca la fonte che genera il rifiuto nei capitoli 01-12 e 17-20; 2) se non c'è, nei capitoli 13, 14, 15; 3) poi nel capitolo 16; 4) solo alla fine una voce 99. Il capitolo 20 vale solo per rifiuti urbani (art. 183, c. 1, lett. b-ter, d.lgs. 152/2006, allegati L-quater e L-quinquies). Gli imballaggi vanno al 15 01. Le descrizioni scritte dall'utente sono le informazioni più importanti: prevalgono sulla foto.`;
+  // 1) sottocapitoli candidati
+  const elencoSub = Object.entries(EER.sub).filter(([k]) => k.length === 4).map(([k, v]) => k.slice(0, 2) + ' ' + k.slice(2) + ' ' + v).join('\n');
+  const r1 = await aiRun(env, [{ role: 'user', content: `Sei un consulente ambientale italiano esperto di classificazione dei rifiuti. ${metodo}\nDati del rifiuto: ${dati}.\nQuesti sono TUTTI i sottocapitoli dell'elenco europeo dei rifiuti:\n${elencoSub}\nIndica da 2 a 6 sottocapitoli in cui può trovarsi la voce giusta, in ordine di probabilità, includendo anche quelli da confrontare (es. 15 01 per gli imballaggi, 16 01 per i veicoli, 20 01 per gli urbani). Rispondi SOLO con JSON: {"sottocapitoli": ["16 01", "..."]}` }], 200);
+  let subs = []; try { subs = (parseJson(r1.text).sottocapitoli || []).map(x => String(x).replace(/\D/g, '').slice(0, 4)).filter(x => EER.sub[x]); } catch (e) { }
+  if (!subs.length) subs = ['1601', '1501', '1602', '1701', '2001'];
+  subs = [...new Set(subs)].slice(0, 6);
+  const voci = EER.codes.filter(v => subs.includes(v[0].slice(0, 4)));
+  const elencoVoci = subs.map(s => '[' + eerSub(s + '00') + ']\n' + voci.filter(v => v[0].startsWith(s)).map(v => eerFmt(v[0]) + (v[2] ? '*' : '') + ' ' + v[1]).join('\n')).join('\n');
+  // 2) scelta della voce, solo dall'elenco ufficiale
+  const ask = extra => aiRun(env, [{ role: 'user', content: `Sei un consulente ambientale italiano esperto di classificazione dei rifiuti. ${metodo} Per le voci a specchio (pericolosa con * e non pericolosa) indica la verifica di pericolosità da fare. Non assecondare l'utente se i dati portano altrove. Se i dati non bastano per scegliere con sicurezza, rispondi "non determinabile" e indica nelle verifiche quali informazioni servono.\nDati del rifiuto: ${dati}.\nVoci ufficiali tra cui scegliere (puoi scegliere SOLO una di queste; l'asterisco indica rifiuto pericoloso):\n${elencoVoci}\n${extra || ''}Rispondi SOLO con JSON: {"codice": "es. 16 01 18 oppure non determinabile", "motivazione": "2-4 frasi che collegano i dati alla voce scelta", "alternative": [{"codice": "...", "motivo": "perché scartato"}], "verifiche": ["..."], "sicurezza": "alta" o "media" o "bassa"}` }], 700);
+  let r = await ask(); let o = parseJson(r.text); let dg = String(o.codice || '').replace(/\D/g, '');
+  if (dg && !EERC.has(dg)) { r = await ask(`ATTENZIONE: il codice ${o.codice} che hai indicato non esiste nell'elenco ufficiale. Scegli solo tra le voci elencate.\n`); o = parseJson(r.text); dg = String(o.codice || '').replace(/\D/g, ''); }
+  const v = EERC.get(dg);
+  const alt = (Array.isArray(o.alternative) ? o.alternative : []).slice(0, 5).map(a => { const d = String(a.codice || '').replace(/\D/g, ''); const w = EERC.get(d); return { c: w ? eerFmt(d) + (w[2] ? '*' : '') : String(a.codice || '').slice(0, 20), d: (w ? w[1] + ' — ' : '') + String(a.motivo || '').slice(0, 200) }; });
+  return { ok: true, codice: v ? eerFmt(dg) + (v[2] ? '*' : '') : 'non determinabile', descrizione: v ? v[1] : '', pericoloso: v ? !!v[2] : false, ufficiale: !!v, sicurezza: ['alta', 'media', 'bassa'].includes(o.sicurezza) ? o.sicurezza : 'media', motivazione: String(o.motivazione || '').slice(0, 900), alternative: alt, verifiche: (Array.isArray(o.verifiche) ? o.verifiche : []).slice(0, 6).map(x => String(x).slice(0, 220)), sottocapitoli: subs.map(s => eerSub(s + '00')), modello: r.model };
 }
+

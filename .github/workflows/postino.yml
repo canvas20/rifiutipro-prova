@@ -32,3 +32,5 @@ jobs:
           done
           echo "== proposta"
           curl -s -X POST "$U" -H 'Origin: https://canvas20.github.io' -H 'Content-Type: application/json' --data '{"mode":"proponi","oggetto":"pneumatici usati","materiale":"altro","attivita":"Officina, autoriparazione","processo":"Pezzo smontato in manutenzione o riparazione"}'; echo
+          echo "== proposta con descrizioni scritte"
+          curl -s -X POST "$U" -H 'Origin: https://canvas20.github.io' -H 'Content-Type: application/json' --data '{"mode":"proponi","oggetto":"fusti metallici","materiale":"Altro","materiale_desc":"fusti in lamiera da 200 litri vuoti che contenevano vernice a solvente, con residui secchi sul fondo","attivita":"Altro","attivita_desc":"carrozzeria, verniciatura di auto","processo":"Imballaggio (scatole, sacchi, pallet, cassette)"}'; echo
